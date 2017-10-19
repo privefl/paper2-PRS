@@ -1,6 +1,6 @@
-logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test) {
+logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
   
-  time <- system.time({
+  timing <- system.time({
     
     cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
                            X = G, y.train = pheno.all[ind.train], 
@@ -13,12 +13,15 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test) {
                      covar.row = covar.all[ind.test, , drop = FALSE])
   })[3]
   
-  list(eval = cbind(preds, pheno.all[ind.test]),
-       timing = time,
-       infos = list(nb.preds = sum(cmsa.logit != 0)))
+  tibble(
+    method   = method, 
+    eval     = list(cbind(preds, pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(cmsa.logit != 0)
+  )
 }
 
-test <- logit.CMSA(G, pheno, obj.svd2$u, ind.train, ind.test)
+test <- logit.CMSA(G, pheno, obj.svd2$u, ind.train, ind.test, "LOGIT")
 test2 <- logit.CMSA(G2, pheno, obj.svd2$u, ind.train, ind.test)
 
 str(test)

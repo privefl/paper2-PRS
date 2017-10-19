@@ -34,7 +34,7 @@ get_pheno <- function(
   }
   
   y.simu <- y.simu / sd(y.simu) * sqrt(h2)
-  stopifnot(all.equal(drop(var(y.simu)), 0.8))
+  stopifnot(all.equal(drop(var(y.simu)), h2))
   y.simu <- y.simu + rnorm(nrow(G), sd = sqrt(1 - h2))
   pheno <- as.numeric(y.simu > qnorm(1 - K))
 }
@@ -42,12 +42,5 @@ get_pheno <- function(
 print(get_pheno(G, 0.8, 300, ind.possible = 
                   snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))))
 
-##### Pas besoin de fonction pour ca
-get_split <- function(n = nrow(G), n.train = 6e3) {
-  ind.train <- sort(sample(n, size = N.train))
-  ind.test <- setdiff(1:n, ind.train)
-}
-split(1:M, sample(rep_len(1:3, M)))
 
-ind.possible <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
 

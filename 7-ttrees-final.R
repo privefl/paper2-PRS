@@ -19,7 +19,7 @@ ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
   cat(ind.train - 1, file = file.learn, sep = "\t")
   cat(ind.test - 1,  file = file.val,   sep = "\t")
   
-  time <- system.time(
+  timing <- system.time(
     system(glue::glue(
       "{TTree}",
       " -j {file.jdb}",
@@ -36,9 +36,12 @@ ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
                               file.jdb, n.trees), 
                       header = FALSE)
   
-  list(eval = preds[match(ind.test - 1, preds[[1]]), 2:3],
-       timing = time,
-       infos = list())
+  tibble(
+    method   = "T-trees",
+    eval     = list(preds[match(ind.test - 1, preds[[1]]), 2:3]),
+    timing   = timing,
+    nb.preds = NA_integer_
+  )
 }
 
 TTree <- "../../TTree-source/TTree"
