@@ -55,7 +55,7 @@ ind.keep <- snp_clumping(G, infos.chr = CHR,
 
 
 # PRS
-thrs <- c(0, exp(seq(log(0.1), log(100), length.out = 100)))
+thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
 lpS <- -predict(gwas.train)
 nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep2] > thr))
 print(system.time(
@@ -68,9 +68,9 @@ print(system.time(
 dim(prs)
 
 # Voir Hmisc::::rcorr.cens
-print(aucs <- apply(prs, 2, AUCBoot, target = pheno[ind.test]))
+# print(aucs <- apply(prs, 2, AUCBoot, target = pheno[ind.test]))
 print(aucs2 <- apply(prs, 2, AUC, target = pheno[ind.test]))
-c(aucs2[1], max(aucs2))
+aucs2[c(1:2, which.max(aucs2))]
 
 bigstatsr:::MY_THEME(qplot(nb.pred, aucs["Mean", ], main = "PRS", 
                                  xlab = "# of predictors", 

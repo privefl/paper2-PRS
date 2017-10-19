@@ -1,4 +1,7 @@
 backingfiles
+discovery
+*.jdb
+*.bloc
 
 # History files
 .Rhistory
