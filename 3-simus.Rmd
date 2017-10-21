@@ -265,10 +265,11 @@ for (i in rows_along(params.grid)) {
     PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
-    ttrees(TTree, "ttrees", pheno.all, ind.train, ind.test, n.trees = 100)
+    ttrees(TTree, "backingfiles/ttrees", pheno.all, ind.train, ind.test, n.trees = 100)
   )
   print(res)
-  saveRDS(res, file = res.file)
+  params[["res"]] <- list(res)
+  saveRDS(unnest(param1, res), file = res.file)
 }
 ```
 

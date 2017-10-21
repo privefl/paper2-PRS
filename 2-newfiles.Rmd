@@ -76,7 +76,7 @@ snp_triple <- function(x) {
   G <- G0$copy(code = round(G0$code256))
   
   newfile <- bigsnpr:::getNewFile(x, "tripled")
-  G2 <- FBM(nrow(G), 3 * ncol(G), type = "raw", 
+  G2 <- FBM.code256(nrow(G), 3 * ncol(G), code = bigsnpr:::CODE_012, 
             backingfile = newfile, save = TRUE)
   
   tripleBM(G, G2)
