@@ -1,0 +1,274 @@
+---
+title: "Simulations"
+author: "Florian Privé"
+date: "October 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
+                      fig.asp = 0.7, error = TRUE)
+options(width = 85)
+```
+
+## Methods' functions
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+Each method's function returns a tibble (data frame) with 4 columns:
+
+1. the name of the method,
+2. the predictive scores and true phenotypes for the test set, as a [list-column](http://r4ds.had.co.nz/many-models.html),
+3. the timing of the main computations (in seconds),
+4. the number of SNPs used for the prediction.
+
+### PRS
+
+```{r}
+PRS <- function(G, infos.chr, infos.pos, 
+                pheno.all, covar.all, 
+                ind.train, ind.test) {
+  
+  # GWAS
+  gwas.train <- big_univLogReg(
+    G, pheno.all[ind.train], ind.train = ind.train, 
+    covar.train = covar.all[ind.train, , drop = FALSE], 
+    ncores = nb_cores()
+  )
+  gwas.train.gc <- snp_gc(gwas.train)
+  
+  timing <- system.time({
+    
+    # Clumping on the test set
+    ind.keep <- snp_clumping(G, infos.chr = infos.chr,
+                             ind.row = ind.test,
+                             thr.r2 = 0.2, 
+                             S = abs(gwas.train.gc$score),
+                             size = 500,
+                             is.size.in.bp = TRUE,
+                             infos.pos = infos.pos,
+                             ncores = nb_cores())
+    
+    # PRS
+    thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
+    lpS <- -predict(gwas.train.gc)
+    nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep] > thr))
+    prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
+                   ind.test = ind.test,
+                   ind.keep = ind.keep,
+                   lpS.keep = lpS[ind.keep], 
+                   thr.list = thrs)
+  })[3]
+  
+  ind.best <- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
+  
+  methods <- c("PRS-all", "PRS-stringent", "PRS-max")
+  indices <- c(1:2, ind.best)
+  
+  lapply(1:3, function(i) {
+    k <- indices[i]
+    tibble(
+      method = methods[i],
+      eval = list(cbind(prs[, k], pheno.all[ind.test])),
+      timing = timing,
+      nb.preds = nb.pred[k]
+    )
+  }) %>%
+    bind_rows()
+}
+```
+
+### Logistic regression
+
+```{r}
+logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
+  
+  timing <- system.time({
+    
+    cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
+                           X = G, y.train = pheno.all[ind.train], 
+                           ind.train = ind.train, 
+                           covar.train = covar.all[ind.train, , drop = FALSE],
+                           alpha = 0.5, dfmax = 20e3, 
+                           ncores = nb_cores())
+    
+    preds <- predict(cmsa.logit, X = G, ind.row = ind.test, 
+                     covar.row = covar.all[ind.test, , drop = FALSE])
+  })[3]
+  
+  tibble(
+    method   = method, 
+    eval     = list(cbind(preds, pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(cmsa.logit != 0)
+  )
+}
+```
+
+### T-Trees
+
+```{r}
+TTree <- "../../TTree-source/TTree"
+
+ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
+                   n.trees = 100) {
+  
+  file0.jdb  <- paste0(file.base, ".jdb")
+  file0.bloc <- paste0(file.base, ".bloc")
+  
+  # Write jdb file with new pheno
+  tmpfile <- tempfile()
+  write(c(rep("", 5), pheno.all), ncolumns = 1, tmpfile)
+  # https://stackoverflow.com/a/7846550/6103040
+  system(sprintf("awk 'FNR==NR{a[NR]=$1;next}{$2=a[FNR]}1' %s %s > %s",
+                 tmpfile, file0.jdb, file.jdb <- paste0(tmpfile, ".jdb")))
+  # Write indices of learning and validation sets
+  file.learn <- paste0(tmpfile, "_learn.txt")
+  file.val   <- paste0(tmpfile, "_val.txt")
+  cat(ind.train - 1, file = file.learn, sep = "\t")
+  cat(ind.test - 1,  file = file.val,   sep = "\t")
+  
+  timing <- system.time(
+    system(glue::glue(
+      "{TTree}",
+      " -j {file.jdb}",
+      " -m 3",
+      " -b {file0.bloc}",
+      " -l {file.learn}",
+      " -v {file.val}", 
+      " -t {n.trees} -k 1000 -c 5 -n 2000",
+      " -x -s"
+    ))
+  )[3]
+  
+  file.roc <- sprintf("%s_k1000_m3_t%d_ic5_nmin2000_0000.roc",
+                      file.jdb, n.trees)
+  file.vim <- sub("\\.roc$", ".vim", file.roc)
+  preds <- read.table(file.roc, header = FALSE)
+  
+  tibble(
+    method   = "T-Trees",
+    eval     = list(preds[match(ind.test - 1, preds[[1]]), 2:3]),
+    timing   = timing,
+    nb.preds = sum(read.table(file.vim)$V2 != 0)
+  )
+}
+```
+
+## Simulations
+
+### Data
+
+```{r}
+library(bigsnpr)
+celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
+CHR <- celiac2$map$chromosome
+POS <- celiac2$map$physical.pos
+(G <- celiac2$genotypes)
+(G2 <- big_attach("backingfiles/celiacQC_sub1_tripled1.rds"))
+
+covar.all <- readRDS("backingfiles/PCA2.rds")$u
+```
+
+### Simulation of phenotypes
+
+```{r}
+get_pheno <- function(
+  G,                                        ## matrix of genotypes
+  h2,                                       ## heritability 
+  M,                                        ## nbs of causal variants
+  ind.possible = cols_along(G),             ## indices of possible causal variants
+  effects.dist = c("gaussian", "laplace"),  ## distribution of effects 
+  model = c("simple", "fancy"),             ## model for simulation
+  K = 0.3                                   ## prevalence
+) {
+  
+  effects.dist  <- match.arg(effects.dist)
+  model <- match.arg(model)
+  
+  set <- sample(ind.possible, size = M)
+  effects <- `if`(effects.dist == "gaussian", 
+                  rnorm(M, sd = sqrt(h2 / M)),
+                  rmutil::rlaplace(M, s = sqrt(h2 / (2*M))))
+  
+  if (model == "simple") {
+    # only linear
+    y.simu <- scale(G[, set]) %*% effects
+  } else {
+    sets <- split(1:M, sample(rep_len(1:3, M)))
+    # linear
+    ind1 <- sets[[1]]
+    y.simu <- scale(G[, set[ind1]]) %*% effects[ind1]
+    # recessive / dominant
+    ind2 <- sets[[2]]
+    y.simu <- y.simu + scale(G[, set[ind2]] > 0.5) %*% effects[ind2]
+    # interactions
+    ind3 <- matrix(sets[[3]], ncol = 2)
+    y.simu <- y.simu + scale(G[, set[ind3[, 1]]] * G[, set[ind3[, 2]]]) %*% 
+      effects[ind3[, 1]] * sqrt(2)
+  }
+  
+  y.simu <- y.simu / sd(y.simu) * sqrt(h2)
+  stopifnot(all.equal(drop(var(y.simu)), h2))
+  y.simu <- y.simu + rnorm(nrow(G), sd = sqrt(1 - h2))
+  pheno <- as.numeric(y.simu > qnorm(1 - K))
+}
+```
+
+### Simulations
+
+```{r}
+n <- nrow(G)
+n.train <- 6e3
+ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
+```
+
+```{r}
+params.grid <- expand.grid(
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple", "fancy"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r}
+for (i in rows_along(params.grid)) {
+  
+  res.file <- paste0("results1/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = n.train))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
+    ttrees(TTree, "ttrees", pheno.all, ind.train, ind.test, n.trees = 100)
+  )
+  print(res)
+  saveRDS(res, file = res.file)
+}
+```
+
