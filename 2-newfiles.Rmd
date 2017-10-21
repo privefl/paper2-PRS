@@ -1,0 +1,98 @@
+---
+title: "New files"
+author: "Florian Privé"
+date: "20 octobre 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
+                      fig.asp = 0.7, error = TRUE)
+options(width = 85)
+```
+
+### Files for ttrees
+
+```{r}
+library(bigsnpr)
+celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
+G <- celiac2$genotypes
+```
+
+```{r}
+# jdb
+file.jdb <- "backingfiles/ttrees.jdb"
+cat(rep(";", 5), sep = "\n", file = file.jdb)
+big_apply(G, a.FUN = function(X, ind) {
+  df <- cbind(paste0("ind_", ind), rep(3, length(ind)), as.data.frame(X[ind, ]))
+  data.table::fwrite(df, file = file.jdb, sep = " ", append = TRUE,
+                     quote = FALSE, col.names = FALSE)
+  NULL
+}, a.combine = "c", ind = rows_along(G), block.size = 1e3)
+```
+
+```{r}
+# bloc
+bigsnpr:::write.table2(
+  bigstatsr:::CutBySize(ncol(G), block.size = 10)[, 1:2] - 1,
+  file = file.bloc <- sub("\\.jdb$", ".bloc", file.jdb)
+)
+readLines(file.bloc, 5)
+```
+
+### File with recessive/dominant information
+
+```{Rcpp}
+// [[Rcpp::depends(bigstatsr, BH)]]
+#include <bigstatsr/BMCodeAcc.h>
+
+// [[Rcpp::export]]
+void tripleBM(Environment BM, Environment BM2) {
+  
+  XPtr<FBM> xpMat = BM["address"];
+  int n = xpMat->nrow();
+  int m = xpMat->ncol();
+  SubBMCode256Acc macc(xpMat, seq_len(n)-1, seq_len(m)-1, BM["code256"]);
+  
+  XPtr<FBM> xpMat2 = BM2["address"];
+  BMAcc<unsigned char> macc2(xpMat2);
+  
+  int i, j, j2;
+  
+  for (j = j2 = 0; j < m; j++, j2 += 3) {
+    for (i = 0; i < n; i++) {
+      macc2(i, j2)   = macc(i, j);
+      macc2(i, j2+1) = macc(i, j) >= 0.5;
+      macc2(i, j2+2) = macc(i, j) >  1.5;
+    }
+  }
+}
+```
+
+```{r}
+snp_triple <- function(x) {
+  
+  G0 <- x$genotypes
+  G <- G0$copy(code = round(G0$code256))
+  
+  newfile <- bigsnpr:::getNewFile(x, "tripled")
+  G2 <- FBM.code256(nrow(G), 3 * ncol(G), 
+                    code = G$code256,
+                    backingfile = newfile,
+                    save = TRUE)
+  
+  tripleBM(G, G2)
+  
+  paste0(newfile, ".rds")
+}
+```
+
+```{r}
+snp_triple(celiac2)
+```
+
+```{r}
+# List all the files with their size in GB
+round(sapply(list.files("backingfiles", full.names = TRUE), file.size) / 1024^3, 1)
+```
+

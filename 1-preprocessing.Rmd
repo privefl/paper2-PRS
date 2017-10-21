@@ -1,0 +1,90 @@
+---
+title: "Preprocessing"
+author: "Florian Privé"
+date: "October 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
+                      fig.asp = 0.7, error = TRUE)
+options(width = 85)
+```
+
+## Data
+
+### QC and imputation
+
+This was done in another paper TODO(add ref).
+
+### Add population from external files
+
+```{r}
+file.copy(paste0("../paper1-packages/backingfiles/celiacQC", c(".bk", ".rds")),
+          paste0("backingfiles/celiacQC", c(".bk", ".rds")))
+
+library(bigsnpr)
+celiac <- snp_attach("backingfiles/celiacQC.rds")
+
+# Get population
+pop.files <- list.files(path = "../thesis-celiac/Dubois2010_data/", 
+                        pattern = "cluster_*", full.names = TRUE)
+pop <- snp_getSampleInfos(celiac, pop.files)[[1]]
+pop.names <- c("Netherlands", "Italy", "UK1", "UK2", "Finland")
+celiac$fam$family.ID <- pop.names[pop]
+celiac <- snp_save(celiac)
+# Read modified file to check
+celiac <- snp_attach("backingfiles/celiacQC.rds")
+rle(celiac$fam$family.ID)
+```
+
+### Filter samples based on population structure
+
+```{r}
+# Compute PCA
+obj.svd <- snp_autoSVD(celiac$genotypes, 
+                       celiac$map$chromosome,
+                       celiac$map$physical.pos, 
+                       ncores = nb_cores())
+
+library(ggplot2)
+plot(obj.svd, type = "scores", scores = 1:2) + 
+  aes(color = celiac$fam$family.ID) + 
+  labs(color = "Population")
+```
+
+```{r}
+# Which are UK controls?
+ind.UKcontrols <- which(startsWith(celiac$fam$family.ID, "UK") & 
+                          celiac$fam$affection == 1)
+obj.svd$u[-ind.UKcontrols, ] <- NA
+```
+
+```{r}
+# Compute Mahalanobis distance on PCs
+distM <- rep(NA, nrow(celiac$genotypes))
+distM[ind.UKcontrols] <- robust::covRob(obj.svd$u[ind.UKcontrols, ])$dist
+THR <- 30
+# Plot UK controls, coloring with Mahalanobis distance
+plotlist <- lapply(list(1:2, 3:4, 5:6, 7:8), function(scores) {
+  plot(obj.svd, type = "scores", scores = scores, coeff = 0.7) + 
+    aes(color = (distM > THR)) + 
+    labs(color = "Outlier?")
+}) 
+cowplot::plot_grid(plotlist = plotlist, ncol = 2, align = "hv")
+```
+
+```{r}
+# New dataset with only non-outliers UK controls
+length(ind.keep <- which(distM < THR))
+celiac2 <- snp_attach(subset(celiac, ind.row = ind.keep))
+obj.svd2 <- snp_autoSVD(celiac2$genotypes, 
+                        celiac2$map$chromosome,
+                        celiac2$map$physical.pos,
+                        ncores = nb_cores())
+plot(obj.svd2)
+plot(obj.svd2, type = "scores", scores = 1:2) 
+# Save this new PCA
+saveRDS(obj.svd2, "backingfiles/PCA2.rds")
+```
+
