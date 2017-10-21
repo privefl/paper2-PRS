@@ -17,22 +17,12 @@ void tripleBM(Environment BM, Environment BM2) {
   BMAcc<unsigned char> macc2(xpMat2);
   
   int i, j, j2;
-  double tmp;
   
   for (j = j2 = 0; j < m; j++, j2 += 3) {
     for (i = 0; i < n; i++) {
-      tmp = macc(i, j);
-      if (tmp == 0) {
-        macc2(i, j2) = macc2(i, j2+1) = macc2(i, j2+2) = 0;
-      } else if (tmp == 1) {
-        macc2(i, j2) = macc2(i, j2+2) = 1;
-        macc2(i, j2+1) = 0;
-      } else if (tmp == 2) {
-        macc2(i, j2) = 2;
-        macc2(i, j2+1) = macc2(i, j2+2) = 1;
-      } else {
-        throw Rcpp::exception("Your FBM should have only Os, 1s or 2s");
-      }
+      macc2(i, j2)   = macc(i, j);
+      macc2(i, j2+1) = macc(i, j) >= 0.5;
+      macc2(i, j2+2) = macc(i, j) >  1.5;
     }
   }
 }
