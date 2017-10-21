@@ -12,7 +12,7 @@ params.grid <- expand.grid(
   stringsAsFactors = FALSE
 ) 
 
-ind.HLA <- subset(LD.wiki34, ID == "hild12")
+
 
 for (i in rows_along(results)) {
   

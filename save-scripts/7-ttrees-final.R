@@ -8,11 +8,8 @@ ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
   tmpfile <- tempfile()
   write(c(rep("", 5), pheno.all), ncolumns = 1, tmpfile)
   # https://stackoverflow.com/a/7846550/6103040
-  writeLines(
-    system(sprintf("awk 'FNR==NR{a[NR]=$1;next}{$2=a[FNR]}1' %s %s",
-                   tmpfile, file0.jdb), intern = TRUE),
-    file.jdb <- paste0(tmpfile, ".jdb")
-  )
+  system(sprintf("awk 'FNR==NR{a[NR]=$1;next}{$2=a[FNR]}1' %s %s > %s",
+                 tmpfile, file0.jdb, file.jdb <- paste0(tmpfile, ".jdb")))
   # Write indices of learning and validation sets
   file.learn <- paste0(tmpfile, "_learn.txt")
   file.val   <- paste0(tmpfile, "_val.txt")
@@ -32,15 +29,16 @@ ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
     ))
   )[3]
   
-  preds <- read.table(sprintf("%s_k1000_m3_t%d_ic5_nmin2000_0000.roc", 
-                              file.jdb, n.trees), 
-                      header = FALSE)
+  file.roc <- sprintf("%s_k1000_m3_t%d_ic5_nmin2000_0000.roc",
+                      file.jdb, n.trees)
+  file.vim <- sub("\\.roc$", ".vim", file.roc)
+  preds <- read.table(file.roc, header = FALSE)
   
   tibble(
-    method   = "T-trees",
+    method   = "T-Trees",
     eval     = list(preds[match(ind.test - 1, preds[[1]]), 2:3]),
     timing   = timing,
-    nb.preds = NA_integer_
+    nb.preds = sum(read.table(file.vim)$V2 != 0)
   )
 }
 
