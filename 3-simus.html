@@ -169,9 +169,6 @@ $(document).ready(function () {
                    ind.keep = ind.keep,
                    lpS.keep = lpS[ind.keep], 
                    thr.list = thrs)
-    
-    preds &lt;- predict(cmsa.logit, X = G, ind.row = ind.test, 
-                     covar.row = covar.all[ind.test, , drop = FALSE])
   })[3]
   
   ind.best &lt;- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
@@ -218,7 +215,9 @@ $(document).ready(function () {
 </div>
 <div id="t-trees" class="section level3">
 <h3>T-Trees</h3>
-<pre class="r"><code>ttrees &lt;- function(TTree, file.base, pheno.all, ind.train, ind.test,
+<pre class="r"><code>TTree &lt;- &quot;../../TTree-source/TTree&quot;
+
+ttrees &lt;- function(TTree, file.base, pheno.all, ind.train, ind.test,
                    n.trees = 100) {
   
   file0.jdb  &lt;- paste0(file.base, &quot;.jdb&quot;)
@@ -265,16 +264,119 @@ $(document).ready(function () {
 </div>
 <div id="simulations" class="section level2">
 <h2>Simulations</h2>
-<div id="data-and-parameters" class="section level3">
-<h3>Data and parameters</h3>
+<div id="data" class="section level3">
+<h3>Data</h3>
 <pre class="r"><code>library(bigsnpr)</code></pre>
 <pre><code>## Loading required package: bigstatsr</code></pre>
 <pre class="r"><code>celiac2 &lt;- snp_attach(&quot;backingfiles/celiacQC_sub1.rds&quot;)
+CHR &lt;- celiac2$map$chromosome
+POS &lt;- celiac2$map$physical.pos
 (G &lt;- celiac2$genotypes)</code></pre>
 <pre><code>## A Filebacked Big Matrix of type 'code 256' with 7102 rows and 281122 columns.</code></pre>
 <pre class="r"><code>(G2 &lt;- big_attach(&quot;backingfiles/celiacQC_sub1_tripled1.rds&quot;))</code></pre>
-<pre><code>## A Filebacked Big Matrix of type 'raw' with 7102 rows and 843366 columns.</code></pre>
-<pre class="r"><code>TTree &lt;- &quot;../../TTree-source/TTree&quot;</code></pre>
+<pre><code>## A Filebacked Big Matrix of type 'code 256' with 7102 rows and 843366 columns.</code></pre>
+<pre class="r"><code>covar.all &lt;- readRDS(&quot;backingfiles/PCA2.rds&quot;)$u</code></pre>
+</div>
+<div id="simulation-of-phenotypes" class="section level3">
+<h3>Simulation of phenotypes</h3>
+<pre class="r"><code>get_pheno &lt;- function(
+  G,                                        ## matrix of genotypes
+  h2,                                       ## heritability 
+  M,                                        ## nbs of causal variants
+  ind.possible = cols_along(G),             ## indices of possible causal variants
+  effects.dist = c(&quot;gaussian&quot;, &quot;laplace&quot;),  ## distribution of effects 
+  model = c(&quot;simple&quot;, &quot;fancy&quot;),             ## model for simulation
+  K = 0.3                                   ## prevalence
+) {
+  
+  effects.dist  &lt;- match.arg(effects.dist)
+  model &lt;- match.arg(model)
+  
+  set &lt;- sample(ind.possible, size = M)
+  effects &lt;- `if`(effects.dist == &quot;gaussian&quot;, 
+                  rnorm(M, sd = sqrt(h2 / M)),
+                  rmutil::rlaplace(M, s = sqrt(h2 / (2*M))))
+  
+  if (model == &quot;simple&quot;) {
+    # only linear
+    y.simu &lt;- scale(G[, set]) %*% effects
+  } else {
+    sets &lt;- split(1:M, sample(rep_len(1:3, M)))
+    # linear
+    ind1 &lt;- sets[[1]]
+    y.simu &lt;- scale(G[, set[ind1]]) %*% effects[ind1]
+    # recessive / dominant
+    ind2 &lt;- sets[[2]]
+    y.simu &lt;- y.simu + scale(G[, set[ind2]] &gt; 0.5) %*% effects[ind2]
+    # interactions
+    ind3 &lt;- matrix(sets[[3]], ncol = 2)
+    y.simu &lt;- y.simu + scale(G[, set[ind3[, 1]]] * G[, set[ind3[, 2]]]) %*% 
+      effects[ind3[, 1]] * sqrt(2)
+  }
+  
+  y.simu &lt;- y.simu / sd(y.simu) * sqrt(h2)
+  stopifnot(all.equal(drop(var(y.simu)), h2))
+  y.simu &lt;- y.simu + rnorm(nrow(G), sd = sqrt(1 - h2))
+  pheno &lt;- as.numeric(y.simu &gt; qnorm(1 - K))
+}</code></pre>
+</div>
+<div id="simulations-1" class="section level3">
+<h3>Simulations</h3>
+<pre class="r"><code>n &lt;- nrow(G)
+n.train &lt;- 6e3
+ind.HLA &lt;- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == &quot;hild12&quot;))</code></pre>
+<pre class="r"><code>params.grid &lt;- expand.grid(
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c(&quot;simple&quot;, &quot;fancy&quot;),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>for (i in rows_along(params.grid)) {
+  
+  res.file &lt;- paste0(&quot;results1/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = n.train))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, &quot;logit-triple&quot;),
+    ttrees(TTree, &quot;backingfiles/ttrees&quot;, pheno.all, ind.train, ind.test, n.trees = 100)
+  )
+  print(res)
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(param1, res), file = res.file)
+}</code></pre>
+<pre><code>## # A tibble: 6 x 4
+##          method                     eval   timing nb.preds
+##           &lt;chr&gt;                   &lt;list&gt;    &lt;dbl&gt;    &lt;int&gt;
+## 1       PRS-all        &lt;dbl [1,102 x 2]&gt;    7.109    95426
+## 2 PRS-stringent        &lt;dbl [1,102 x 2]&gt;    7.109       22
+## 3       PRS-max        &lt;dbl [1,102 x 2]&gt;    7.109       14
+## 4  logit-simple        &lt;dbl [1,102 x 2]&gt;  540.618      949
+## 5  logit-triple        &lt;dbl [1,102 x 2]&gt; 1447.478     1001
+## 6       T-Trees &lt;data.frame [1,102 x 2]&gt; 4061.206    15293</code></pre>
+<pre><code>## Error in unnest(param1, res): objet 'param1' introuvable</code></pre>
 </div>
 </div>
 

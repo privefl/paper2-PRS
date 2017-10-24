@@ -1,0 +1,129 @@
+%% LyX 1.3 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english, 12pt]{article}
+\usepackage{times}
+%\usepackage{algorithm2e}
+\usepackage{url}
+\usepackage{bbm}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,letterpaper,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\usepackage{rotating}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{setspace}
+\usepackage{lineno}
+\usepackage{hyperref}
+\usepackage{bbm}
+
+\linenumbers
+\doublespacing
+%\usepackage[authoryear]{natbib}
+\usepackage{natbib} \bibpunct{(}{)}{;}{author-year}{}{,} 
+
+%Pour les rajouts
+\usepackage{color}
+\definecolor{trustcolor}{rgb}{0,0,1}
+
+\usepackage{adjustbox}
+\usepackage{multirow}
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Bold symbol macro for standard LaTeX users
+%\newcommand{\boldsymbol}[1]{\mbox{\boldmath $#1$}}
+
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+\usepackage{babel}
+\makeatother
+
+
+\begin{document}
+
+
+\title{Predicting complex diseases: performance and robustness}
+\author{Florian Privé\,$^{\text{ 1,}*}$, Hugues Aschard\,$^{\text{2,3}}$ and Michael G.B. Blum\,$^{\text{1,}*}$}
+
+
+
+\date{~ }
+\maketitle
+
+\noindent$^{\text{\sf 1}}$Université Grenoble Alpes, CNRS, Laboratoire TIMC-IMAG, UMR 5525, France, \\
+\noindent$^{\text{\sf 2}}$Centre de Bioinformatique, Biostatistique et Biologie Intégrative (C3BI), Institut Pasteur, Paris, France \\
+\noindent$^{\text{\sf 3}}$Department of Epidemiology, Harvard T.H. Chan School of Public Health, Boston, Massachusetts, USA.
+
+\noindent$^\ast$To whom correspondence should be addressed.
+
+\newpage
+\abstract{
+\textbf{Motivation:} \\
+\textbf{Results:} \\
+\textbf{Availability:}
+\textbf{Contact:} \href{florian.prive@univ-grenoble-alpes.fr}{florian.prive@univ-grenoble-alpes.fr} \& \href{michael.blum@univ-grenoble-alpes.fr}{michael.blum@univ-grenoble-alpes.fr}\\
+\textbf{Supplementary information:}
+}
+
+\newpage
+\section{Introduction}
+
+Polygenic Risk Scores (PRSs) combine the information contained in many single-nucleotide polymorphisms (SNPs) in a score that should reflect the risk of developing diseases. PRSs have proven to be useful for different applications, such as .... 
+Personalized medicine is one of the major applications of PRSs. Personalized medicine will use PRSs in screening campains in order to identify people at higher risk for a given disease. ...This could lead to prevention for these identified people...
+Personalized medicine with also use PRSs for helping in the diagnostic of disease, either confirming a diagnostic or even early diagnostic. Yet, diagnostic based on PRSs won't be possible unless these PRSs shows a high discrimitative power between cases and controls [REF].
+Many methods have been developed in order to maximize the predictive power of genotypes for diseases, or more generally phenotypes.
+A commonly used technique, called P+T (which stands for ``Pruning + Thresholding'') or genetic profiling, is used to derive a PRS from results of Genome-Wide Association Study (GWAS). This technique only use summary statistics which make it very ..suitable.. and also very fast.
+Linear Mixed-Models are also widely-used in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height [REF]. Yet, these models are not ..constructed.. for predicting a binary trait such as a disease and have proven to ..fail.. at such in another comparative study [REF GAD]. Moreover, these methods and their derivations are often computationally demanding and won't be usable for largest cohorts to data [REFS].
+Statistical learning methods such as logistic regression, Support Vector Machine (SVM) or random forests were also used to derive PRSs for complex human disease by jointly estimating SNP effects.
+
+We recently developed two R packages, bigstatsr and bigsnpr, for efficient management and analysis of large-scale genome-wide data. This include efficient functions for computing penalized linear and logistic regressions on huge datasets. In this paper, we present a comprehensive analysis of the P+T method, our penalized logistic regression and the T-Trees algorithm, which is a derivation of random forests and has given exceptionally good results in its corresponding paper [REF BOTTA]. Note that SVM is expected to give similar results to logistic regression [REF GAD], and therefore isn't added to the comparison.
+For the P+T model, we compare different threshold of inclusion of SNPs, as it has been a burning question for some years.
+For the logistic regression, we include two novel approaches. First, we introduce a procedure that we call Cross-Model Selection and Averaging (CMSA) for ``choosing'' the optimal threshold of inclusion of SNPs. We also show how easy it is to tweak the method in order to capture not only linear effects, but also recessive/dominant effects.
+Finally, we quickly discard T-Trees as being a suitable method for predicting disease status based on genotypes.
+In order to make our comparison as comprehensive as possible, we compare different architectures of disease (number, size and location of causal effects and heritability) with different model of generating liability ..scores.., one with only linear effects, and one which combine linear, recessive, dominant and interaction effects. 
+
+We show that penalized logistic regression consistently performs better than the P+T method whereas predictive performance of the P+T method is very sensitive to the threshold of inclusion of SNPs [MONTRER UN GRAPH EN FCT D'INCLUSION].
+
+\section{Methods}
+
+\subsection{Simulations}
+
+For simulations, we use real genotypes of European individuals from a case/control celiac disease cohort [REF]. 
+This dataset has been quality-controled and imputed in another study [REF MOI].
+To get rid of the structure induced by the celiac disease, we keep only controls from this cohort. Moreover, to get rid of population structure, we keep only people from UK and further subset these British people based on deviation of Robust Mahalanobis distance on Principal Components (see ..SupMat..), leaving 7102 individuals genotypes on ..28x,xxx.. SNPs.
+
+To simulate phenotypes, we use a the Liability Threshold Model (LTM). We vary different parameters including the number of causal variants and their location (30, 300 or 3000 anywhere in the genome and 30 in the HLA region).
+
+\subsection{Compared methods}
+
+\section{Results}
+
+
+
+\newpage
+\section*{Acknowledgements}
+
+Authors acknowledge Grenoble Alpes Data Institute, supported by the French National Research Agency under the ``Investissements d?avenir'' program (ANR-15-IDEX-02) and the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01).
+
+\vspace*{-12pt}
+
+\bibliographystyle{natbib}
+\bibliography{document}
+
+\newpage
+\section*{Supplementary Data}
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{figure}{0}
+\renewcommand{\thetable}{S\arabic{table}}
+\setcounter{table}{0}
+
+
+
+\end{document}

@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
-                      fig.asp = 0.7, error = TRUE)
+                      fig.asp = 0.7)
 options(width = 85)
 ```
 
@@ -170,6 +170,10 @@ POS <- celiac2$map$physical.pos
 (G2 <- big_attach("backingfiles/celiacQC_sub1_tripled1.rds"))
 
 covar.all <- readRDS("backingfiles/PCA2.rds")$u
+
+n <- nrow(G)
+n.train <- 6e3
+ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
 ```
 
 ### Simulation of phenotypes
@@ -217,32 +221,28 @@ get_pheno <- function(
 }
 ```
 
-### Simulations
+### First simulations (with T-Trees)
 
 ```{r}
-n <- nrow(G)
-n.train <- 6e3
-ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
-```
-
-```{r}
-params.grid <- expand.grid(
+params.grid1 <- expand.grid(
   par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
   par.dist   = c("gaussian", "laplace"), 
-  par.h2     = c(0.5, 0.8), 
+  par.h2     = 0.8, 
   par.model  = c("simple", "fancy"),
-  num.simu   = 1:100,
+  num.simu   = 1:5,
   stringsAsFactors = FALSE
 ) 
 ```
 
 ```{r}
-for (i in rows_along(params.grid)) {
+if (!dir.exists("results1")) dir.create("results1")
+
+for (i in rows_along(params.grid1)) {
   
   res.file <- paste0("results1/simu_", i, ".rds")
   if (file.exists(res.file)) next
   
-  params <- params.grid[i, ]
+  params <- params.grid1[i, ]
   par.causal <- params[["par.causal"]][[1]]
   
   # Simulate phenotypes
@@ -269,7 +269,57 @@ for (i in rows_along(params.grid)) {
   )
   print(res)
   params[["res"]] <- list(res)
-  saveRDS(unnest(param1, res), file = res.file)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
 
+### Second simulations (without T-Trees)
+
+```{r}
+params.grid2 <- expand.grid(
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple", "fancy"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r}
+if (!dir.exists("results2")) dir.create("results2")
+
+for (i in rows_along(params.grid2)) {
+  
+  res.file <- paste0("results2/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid2[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = n.train))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple")
+  )
+  print(res)
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
