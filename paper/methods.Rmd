@@ -1,0 +1,57 @@
+---
+# title: "Untitled"
+# author: "Florian Privé"
+# date: "2 février 2017"
+output:
+  # html_document: default
+  word_document: default
+bibliography: ../../articles/library.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center',
+                      out.width = 600, out.height = 480)
+```
+
+# Methods
+
+## Models in statistical learning
+
+####TODO: Define n, m, $x_i$ and $y_i$
+
+In statistical learning, most basic model consists in the minimization of a function of the following form:
+$$L(\beta_0,\beta) + \lambda P_\alpha(\beta)$$
+where $L$ is called the "loss function" and $P_{\alpha}$ is the regularization term (usually, the intercept term is not penalized). 
+Let us denote by $s_i=S_{\beta_0,\beta}(x_i)=\beta_0+x_i^T\beta$ the score function associated with the $i$-th individual and weights $\beta_0$ and $\beta$. 
+Standard loss functions are:
+
+- Gaussian loss (or mean squared error): $L_\text{gaussian}(\beta_0,\beta)=\frac{1}{n}\sum_{i=1}^n(y_i-s_i)^2$,
+- Logistic loss: $L_\text{logistic}(\beta_0,\beta)=\frac{1}{n}\sum_{i=1}^n \log(1+e^{-y_i s_i})$,
+- Hinge loss (SVM): $L_\text{hinge}(\beta_0,\beta)=\frac{1}{n}\sum_{i=1}^n \max(0, 1-y_i s_i)$.
+
+```{r, fig.cap=""}
+knitr::include_graphics("Images/loss-functions.png", dpi = 500)
+```
+
+
+Different regularizations can be used to prevent overfitting:
+
+- L2-regularization (ridge, @Hoerl1970): $P_{0}(\beta)=\frac{1}{2}\|\beta\|_2^2$. The ridge penalty shrink coefficients and is ideal if there are many predictors drawn from a Gaussian distribution. 
+- L1-regularization (lasso, @Tibshirani1996): $P_{1}(\beta)=\|\beta\|_1$. The Lasso penalty will force some of the coefficients to be exactly zero. This can be used as a means of variable selection, leading to sparse (and therefore more interpretable) models.
+- L1- and L2-regularization (elastic-net, @Zou2005): $P_{\alpha}(\beta)=(1-\alpha)P_{0}(\beta) + \alpha P_{1}(\beta)$. This is a compromise between the two previous penalties and is particularly useful in the $m \gg n$ situation, or any situation where there are many correlated predictors (@Friedman2010).
+
+
+## State-of-the-art polygenic models
+
+Two models are well used in the litterature:
+
+## Hyper-parameter tuning
+
+For tuning hyper-parameters, we used 10-fold cross-validation.
+
+```{r, fig.cap="Illustration of an inner 10-fold cross-validation."}
+knitr::include_graphics("https://sebastianraschka.com/images/faq/evaluate-a-model/k-fold.png")
+```
+
+
+# References

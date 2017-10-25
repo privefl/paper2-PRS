@@ -27,6 +27,7 @@
 \usepackage{color}
 \definecolor{trustcolor}{rgb}{0,0,1}
 
+\usepackage{dsfont}
 \usepackage{adjustbox}
 \usepackage{multirow}
 \usepackage{graphicx}
@@ -66,7 +67,7 @@
 \abstract{
 \textbf{Motivation:} \\
 \textbf{Results:} \\
-\textbf{Availability:}
+\textbf{Availability:} \\
 \textbf{Contact:} \href{florian.prive@univ-grenoble-alpes.fr}{florian.prive@univ-grenoble-alpes.fr} \& \href{michael.blum@univ-grenoble-alpes.fr}{michael.blum@univ-grenoble-alpes.fr}\\
 \textbf{Supplementary information:}
 }
@@ -74,7 +75,7 @@
 \newpage
 \section{Introduction}
 
-Polygenic Risk Scores (PRSs) combine the information contained in many single-nucleotide polymorphisms (SNPs) in a score that should reflect the risk of developing diseases. PRSs have proven to be useful for different applications, such as .... 
+Polygenic Risk Scores (PRSs) combine the information contained in many single-nucleotide polymorphisms (SNPs) in a score that should reflect the risk of developing diseases. PRSs have proven to be useful for different applications, such as finding a common genetic contribution between two diseases [@Purcell2009]. 
 Personalized medicine is one of the major applications of PRSs. Personalized medicine will use PRSs in screening campains in order to identify people at higher risk for a given disease. ...This could lead to prevention for these identified people...
 Personalized medicine with also use PRSs for helping in the diagnostic of disease, either confirming a diagnostic or even early diagnostic. Yet, diagnostic based on PRSs won't be possible unless these PRSs shows a high discrimitative power between cases and controls [REF].
 Many methods have been developed in order to maximize the predictive power of genotypes for diseases, or more generally phenotypes.
@@ -96,11 +97,35 @@ We show that penalized logistic regression consistently performs better than the
 
 For simulations, we use real genotypes of European individuals from a case/control celiac disease cohort [REF]. 
 This dataset has been quality-controled and imputed in another study [REF MOI].
-To get rid of the structure induced by the celiac disease, we keep only controls from this cohort. Moreover, to get rid of population structure, we keep only people from UK and further subset these British people based on deviation of Robust Mahalanobis distance on Principal Components (see ..SupMat..), leaving 7102 individuals genotypes on ..28x,xxx.. SNPs.
+To get rid of the structure induced by the celiac disease, we keep only controls from this cohort. Moreover, to get rid of population structure, we keep only people from UK and further subset these British people based on deviation of Robust Mahalanobis distance on Principal Components (see ..SupMat..), leaving 7102 individuals genotypes on ..28x,xxx.. SNPs [ADD DIM TO RMD] with minimal population structure (see ..SupMat..) because this....
 
-To simulate phenotypes, we use a the Liability Threshold Model (LTM). We vary different parameters including the number of causal variants and their location (30, 300 or 3000 anywhere in the genome and 30 in the HLA region).
+To simulate phenotypes, we use a the Liability Threshold Model (LTM) with a prevalence of 30\%. We vary different parameters: the number of causal variants and their location (30, 300 or 3000 anywhere in the genome and 30 only in the HLA region), the heritability (0.5 or 0.8), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part.. of the phenotypes (one with only linear effects, and one which combine linear, recessive, dominant and interaction effects). This simulation is broader yet similar to the one used in [REF STEPHENS]. 
+
+For the ``simple model'', we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights ($w_j \neq 0$ if and only if SNP $j$ is causal), $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). \\
+For the ``fancy model'', we separate the causal SNPs in three equal sets $E_\text{causal}^{(1)}$, $E_\text{causal}^{(2)}$ 
+and $E_\text{causal}^{(3)}$ ($E_\text{causal}^{(3)}$ is further separated in two equal sets, $E_\text{causal}^{(3.1)}$ and $E_\text{causal}^{(3.2)}$) 
+and we compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in E_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{recessive/dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|E_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} \cdot G_{i,j_2}}}_\text{interaction}$$ where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $E_\text{causal}^{(q)}=\left\{e_k^{(q)}, k \in \left\{1, \ldots, \left|E_\text{causal}^{(q)}\right|\right\}\right\}$. Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still display a marginal effect. \\
+For both models, the $y_i$ are then standardized such that they have a variance equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$ where $\epsilon \sim N(0, 1 - h^2)$.
+
+This results in 32 combinations of parameters and we run 100 simulations for each of these combinations (5 times more than in [REF STEPHENS]), resulting of a total of 3200 simulations. For each of these 3200 simulations, we randomly re-sample a training set of 6000 individuals, with the corresponding test set composed of the remaining individuals.
+
+
+\subsection{Predictive performance measures}
 
 \subsection{Compared methods}
+
+In this study, we compare three different types of methods: the P+T method, the T-Trees method and a penalized logistic regression.
+
+The P+T (Pruning + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWASs) that are commonly called summary statistics.
+For the P+T method, a coefficient of regression is learned independently for each SNP along with a corresponding p-value (the GWAS part). GWAS was performed using logistic regressions, with 10 first Principal Components (PCs) as covariates in the models.
+The SNPs are first clumped (P) so that there remains only loci that are weakly correlated with each other. 
+Thresholding (T) consists in removing SNPs that are under a certain level of significance (P-value threshold to be determined). 
+Finally, a polygenic risk score is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients: $$S_i = \sum_{j \in E_\text{clumping}} \mathds{1}\{p_j < T\} \cdot \beta_j \cdot G_{i,j}$$ where $\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS and $T$ is a threshold to be determined. In this study, we report scores for a clumping threshold at $r^2 > 0.2$ with regions of 500kb. [threshold in results?]
+[DIRE CA??:] All these steps are implemented in R packages bigstatsr and bigsnpr [REF MOI].
+
+T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests [REF 2001, BReiman] that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data [REF BOTTA]. In a previous study on WTCCC data [REF], it achieved too-good-to-be-true results. Since this method is significantly different from the other tested here, we decided to include it in this comparison in order to assess whether or not it could give superior predictive performance. We use the same parameters as reported in Table 4 of the T-Trees paper, yet, we use only 100 trees (instead of 1000) because it showed only a very subtle increase of AUC while taking way too much time (e.g. AUC of 81.5\% instead of 81\%, data not shown).
+
+The last method we compare is penalized logistic regression. 
 
 \section{Results}
 
