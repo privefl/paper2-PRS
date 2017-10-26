@@ -1,0 +1,96 @@
+---
+title: "Results"
+author: "Florian Privé"
+date: "October 26, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.asp = 0.7)
+options(width = 110)
+```
+
+## Useful functions
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+```{r}
+myggplot <- function(..., coeff = 1) {
+  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
+} 
+```
+
+```{r}
+plot_results <- function(results, y, ylab = y) {
+  
+  dist <- "Distribution\nof effects"
+  
+  myggplot(results) +
+    geom_boxplot(aes_string("method", y, color = "par.dist", 
+                            fill = "par.dist"), alpha = 0.3) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    facet_grid(par.model ~ par.causal) +
+    theme(strip.text.x = element_text(size = rel(2)),
+          strip.text.y = element_text(size = rel(2))) +
+    labs(x = "Method", y = ylab, fill = dist, color = dist)
+}
+```
+
+## Results with T-Trees
+
+```{r}
+top10 <- 1:110
+top20 <- 1:220
+
+# Put all results in a single tibble
+results <- list.files("results1", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  as_tibble() %>%
+  mutate(
+    par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
+                        levels = c("30 in HLA", paste(3 * 10^(1:3), "in all"))),
+    AUC = map_dbl(eval, ~bigstatsr::AUC(.x[, 1], .x[, 2])),
+    percCases10 = map_dbl(eval, ~mean(.x[order(.x[, 1], decreasing = TRUE)[top10], 2])),
+    percCases20 = map_dbl(eval, ~mean(.x[order(.x[, 1], decreasing = TRUE)[top20], 2]))
+  )
+```
+
+```{r}
+results %>%
+  filter(method %in% c("T-Trees", "logit-simple")) %>%
+  group_by_at(c(vars(starts_with("par")), "method")) %>%
+  summarise_at(c("timing", "nb.preds", "AUC", "percCases10", "percCases20"), mean) %>%
+  print(n = Inf)
+```
+
+```{r, fig.width=16, out.width="95%", dev="svg"}
+ttrees_vs_logit <- filter(results, method %in% c("T-Trees", "logit-simple"))
+
+p_list <- list(
+  plot_results(ttrees_vs_logit, "timing", "Timing (in seconds)") +
+    scale_y_continuous(breaks = 0:10 * 2000, minor_breaks = NULL),
+  plot_results(ttrees_vs_logit, "nb.preds", "Number of predictors (log-scale)") +
+    scale_y_log10(breaks = c(10^(0:7), 3 * 10^(0:7)), minor_breaks = NULL,
+                  labels = scales::comma_format()),
+  plot_results(ttrees_vs_logit, "AUC") +
+    scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10),
+  plot_results(ttrees_vs_logit, "percCases10", "Percentage of cases in top 10%") +
+    scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
+)
+
+lapply(p_list, function(p) p + theme(legend.position = "none")) %>%
+  cowplot::plot_grid(plotlist = ., ncol = 2, align = "hv", scale = 0.9,
+                     labels = LETTERS[1:4], label_size = 25) %>%
+  cowplot::plot_grid(cowplot::get_legend(p_list[[1]]),
+                     rel_widths = c(1, 0.15))
+```
+
+```{r}
+ggsave("figures/ttrees.pdf", scale = 1/90, width = 1580, height = 1070)
+```
+
+
+## Results without T-Trees
+

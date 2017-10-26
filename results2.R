@@ -10,6 +10,7 @@ top20 <- 1:220
 
 results <- list.files("../thesis/paper2-PRS/results1/", full.names = TRUE) %>%
   map_dfr(~readRDS(.x)) %>%
+  filter(method != "T-Trees") %>%
   as_tibble() %>%
   mutate(
     par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
@@ -21,13 +22,10 @@ results <- list.files("../thesis/paper2-PRS/results1/", full.names = TRUE) %>%
 
 print(results, n = Inf)
 
-results %>%
-  filter(method == "T-Trees") %>%
-  pull(timing)
 
 results %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
-  summarise_at(c("timing", "nb.preds", "AUC", "percCases"), mean)
+  summarise_at(c("timing", "nb.preds", "AUC", "percCases10"), mean)
 
 plot_results <- function(results, y, ylab = y) {
   
@@ -44,41 +42,41 @@ plot_results <- function(results, y, ylab = y) {
 }
 
 results %>%
-  filter(!grepl("PRS", method)) %>%
+  filter(!grepl("PRS", method), par.h2 == 0.8) %>%
   plot_results("timing", "Timing") +
-  scale_y_continuous(breaks = 0:10 * 2000, minor_breaks = NULL) 
+  scale_y_continuous(breaks = 0:50 * 100, minor_breaks = NULL) 
 ggsave("timing.pdf", scale = 1/90, width = 1200, height = 900)
 
-plot_results(results, "AUC") +
+results %>%
+  filter(par.h2 == 0.8) %>%
+  plot_results("AUC") +
   scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
 ggsave("AUC.pdf", scale = 1/90, width = 1200, height = 900)
 
 ggsave("perc-cases.pdf", scale = 1/90, width = 1200, height = 900)
 
-plot_results(results, "percCases20", "Percentage of cases in top 20%") +
+results %>%
+  filter(par.h2 == 0.8) %>%
+  plot_results("percCases20", "Percentage of cases in top 20%") +
   scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
 
-plot_results(results, "nb.preds", "Number of predictors") +
+results %>%
+  filter(par.h2 == 0.8) %>%
+  plot_results("nb.preds", "Number of predictors") +
   scale_y_log10(breaks = c(10^(0:7), 3 * 10^(0:7)), minor_breaks = NULL,
                 labels = scales::comma_format())
 ggsave("nb-preds.pdf", scale = 1/90, width = 1200, height = 900)
 
-ttrees_vs_logit <- filter(results, method %in% c("T-Trees", "logit-simple"))
-
-p_list <- list(
-  plot_results(ttrees_vs_logit, "timing", "Timing") +
-    scale_y_continuous(breaks = 0:10 * 2000, minor_breaks = NULL),
-  plot_results(ttrees_vs_logit, "nb.preds", "Number of predictors") +
-    scale_y_log10(breaks = c(10^(0:7), 3 * 10^(0:7)), minor_breaks = NULL,
-                  labels = scales::comma_format()),
-  plot_results(ttrees_vs_logit, "AUC") +
-    scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10),
-  plot_results(ttrees_vs_logit, "percCases10", "Percentage of cases in top 10%") +
-    scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
+cowplot::plot_grid(
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases10, color = par.dist)) +
+    geom_point() +
+    geom_smooth(method = "lm"),
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases20, color = par.dist)) +
+    geom_point() +
+    geom_smooth(method = "lm"),
+  ncol = 1
 )
-lapply(p_list, function(p) p + theme(legend.position = "none")) %>%
-  cowplot::plot_grid(plotlist = ., ncol = 2, align = "hv", scale = 0.9,
-                     labels = LETTERS[1:4], label_size = 25) %>%
-  cowplot::plot_grid(cowplot::get_legend(p_list[[1]]),
-                     rel_widths = c(1, 0.15))
-

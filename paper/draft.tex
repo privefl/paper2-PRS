@@ -34,6 +34,10 @@
 \graphicspath{{../figures/}}
 \DeclareMathOperator*{\argmin}{\arg\!\min}
 
+\let\tabbeg\tabular
+\let\tabend\endtabular
+\renewenvironment{tabular}{\begin{adjustbox}{max width=\textwidth}\tabbeg}{\tabend\end{adjustbox}}
+
 \makeatletter
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
@@ -94,7 +98,7 @@ We show that penalized logistic regression consistently performs better than the
 
 \section{Methods}
 
-\subsection{Simulations}
+\subsection{Simulations} \label{sec:simus}
 
 For simulations, we use real genotypes of European individuals from a case/control celiac disease cohort [REF]. 
 This dataset has been quality-controled and imputed in another study [REF MOI].
@@ -112,6 +116,13 @@ This results in 32 combinations of parameters and we run 100 simulations for eac
 
 
 \subsection{Predictive performance measures}
+
+In this study, we use two different measures of predictive accuracy. 
+First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC). In the case of our study, the AUC is the probability that a PRS of a case is greater than one of a control.
+This measure indicates how well we can distinguish between cases and controls using PRSs.
+As a second measure, we report the percentage of cases in the 10\% largest PRSs [UTILISER 20\%?]. This measure indicates how well we can identify people at higher risk from a higher PRS in screening campaigns.
+
+Note that we also report the timing of the main computations and the number of SNPs used for the prediction.
 
 \subsection{Compared methods}
 
@@ -135,9 +146,36 @@ the L1- and L2-regularization (elastic-net, @Zou2005) is a compromise between th
 
 To fit this penalized logistic regression, we use a very efficient algorithms based on (@Friedman2010, ...2012 and biglasso...), also implemented in our package bigstatsr. This type of algorithms build predictions for many values of $\lambda$ (typically 100). To get an algorithm free of the choice of this hyper-parameter $\lambda$, we developed a procedure that we called Cross-Model Selection and Averaging (CMSA). First, this method separates the training set in $K$ folds (e.g. 10). Secondly, in turn, each fold is considered as an inner validation set and the others ($K - 1$) folds form an inner training set, the model is trained on the inner training set and the corresponding predictions (scores) for the inner validation set are computed, the vector of scores which maximizes a criterion (e.g. AUC) is determined and the vector of coefficients corresponding to the previous vector of scores is chosen. Finally, the $K$ resulting vectors of coefficients are then combined into one vector (e.g. using the geometric median). Because of L1-regularization, this vector of coefficients is typically very sparse and can be used to make a PRS based on a linear combination of allele counts.
 
+\subsection{Reproduciblity}
+
+All the code used in this paper along with results,  such as execution times and figures,  are available as HTML R notebooks in the Supplementary Materials.
 
 \section{Results}
 
+\subsection{Overview and naming}
+
+\subsection{T-Trees}
+
+First, we ran only 5 simulations for each combination of parameters (see section \ref{sec:simus}), excepted for the heritability that we fixed at $0.8$.
+The goal was to quickly discard the T-Trees method as being competitive with the other methods. 
+For example, compared to our penalized logistic regression, T-Trees perform worse for both predictive measures, the AUC and the percentage of cases in highest scores. Moreover, T-Trees takes longer to run and makes more complex predictive models because it uses more SNPs in the models and have non-linear effects (Figure \ref{fig:ttrees}).
+So, we decided to discard this method for the rest of the simulations.
+
+\subsection{Main simulations}
+
+For the P+T method, we report three different scores of prediction: one including all the SNPs (after clumping), one including only SNPs that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$), and one that maximize the AUC for these two thresholds and a sequence of 100 values from $10^{-0.1}$ to $10^{-100}$ equally spaced on the log-log-scale (Table \ref{tab:thr}). Note that, normally, the optimal threshold would have to be learned on the training set only. We consider this reported maximum AUC as an upper bound of the AUC for the P+T method.
+
+[Also return p-values?]
+
+[TIMING: PRS -> 0; logit -> 500-600 with small increase when more causal variants, logit-triple x3]
+
+[AUC: decrease with M, PRS-all never good, logit-triple better for fancy and almost as good for simple]
+
+[\% Cases: Linear with AUC, Attention perc cases is == 30%] 
+
+
+
+\section{Discussion}
 
 
 \newpage
@@ -158,6 +196,28 @@ Authors acknowledge Grenoble Alpes Data Institute, supported by the French Natio
 \renewcommand{\thetable}{S\arabic{table}}
 \setcounter{table}{0}
 
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{ttrees}}
+\caption{Results of T-Trees vs penalized logistic regression. \textbf{A.} Timing (in seconds). \textbf{B.} Number of predictors of the model. \textbf{C.} AUC. \textbf{D.} Percentage of cases in the 10\% largest scores.}\label{fig:ttrees}
+\end{figure}
 
+% latex table generated in R 3.4.1 by xtable 1.8-2 package
+% Thu Oct 26 16:46:26 2017
+\begin{table}[ht]
+\centering
+\begin{tabular}{ccccccccccccccc}
+  \hline
+1.00e+00 & 7.22e-01 & 5.87e-01 & 4.20e-01 & 2.43e-01 & 1.00e-01 & 2.35e-02 & 2.21e-03 & 4.69e-05 & 8.81e-08 & 3.18e-12 & 1.83e-19 & 2.89e-31 & 1.70e-50 & 7.71e-82 \\ 
+  5.00e-08 & 7.05e-01 & 5.65e-01 & 3.95e-01 & 2.20e-01 & 8.47e-02 & 1.79e-02 & 1.42e-03 & 2.28e-05 & 2.73e-08 & 4.69e-13 & 8.08e-21 & 1.80e-33 & 4.30e-54 & 1.06e-87 \\ 
+  7.94e-01 & 6.87e-01 & 5.42e-01 & 3.69e-01 & 1.97e-01 & 7.08e-02 & 1.34e-02 & 8.83e-04 & 1.05e-05 & 7.74e-09 & 6.03e-14 & 2.86e-22 & 7.73e-36 & 5.97e-58 & 5.49e-94 \\ 
+  7.81e-01 & 6.69e-01 & 5.19e-01 & 3.43e-01 & 1.75e-01 & 5.85e-02 & 9.79e-03 & 5.31e-04 & 4.61e-06 & 2.01e-09 & 6.69e-15 & 7.92e-24 & 2.24e-38 & 4.37e-62 & 1.00e-100 \\ 
+  7.67e-01 & 6.50e-01 & 4.95e-01 & 3.18e-01 & 1.54e-01 & 4.76e-02 & 7.01e-03 & 3.08e-04 & 1.90e-06 & 4.72e-10 & 6.32e-16 & 1.70e-25 & 4.26e-41 & 1.61e-66 &  \\ 
+  7.53e-01 & 6.30e-01 & 4.70e-01 & 2.93e-01 & 1.35e-01 & 3.82e-02 & 4.90e-03 & 1.72e-04 & 7.31e-07 & 1.00e-10 & 5.04e-17 & 2.75e-27 & 5.16e-44 & 2.83e-71 &  \\ 
+  7.38e-01 & 6.09e-01 & 4.46e-01 & 2.68e-01 & 1.17e-01 & 3.02e-02 & 3.33e-03 & 9.18e-05 & 2.63e-07 & 1.89e-11 & 3.35e-18 & 3.31e-29 & 3.84e-47 & 2.26e-76 &  \\ 
+   \hline
+\end{tabular}
+\caption{The 102 thresholds used in the P+T method for this study.}
+\label{tab:thr}
+\end{table}
 
 \end{document}
