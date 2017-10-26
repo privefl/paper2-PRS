@@ -32,6 +32,7 @@
 \usepackage{multirow}
 \usepackage{graphicx}
 \graphicspath{{../figures/}}
+\DeclareMathOperator*{\argmin}{\arg\!\min}
 
 \makeatletter
 
@@ -125,7 +126,15 @@ Finally, a polygenic risk score is defined as the sum of allele counts of the re
 
 T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests [REF 2001, BReiman] that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data [REF BOTTA]. In a previous study on WTCCC data [REF], it achieved too-good-to-be-true results. Since this method is significantly different from the other tested here, we decided to include it in this comparison in order to assess whether or not it could give superior predictive performance. We use the same parameters as reported in Table 4 of the T-Trees paper, yet, we use only 100 trees (instead of 1000) because it showed only a very subtle increase of AUC while taking way too much time (e.g. AUC of 81.5\% instead of 81\%, data not shown).
 
-The last method we compare is penalized logistic regression. 
+
+The last method we compare is penalized logistic regression.
+We solve: $$\argmin_{\beta_0, \beta}(x, y, \lambda)\left\{\underbrace{\frac{1}{n}\sum_{i=1}^n \log\left(1+e^{-y_i (\beta_0+x_i^T\beta)}\right)}_\text{Loss function} + \underbrace{\lambda \left((1-\alpha)\frac{1}{2}\|\beta\|_2^2 + \alpha \|\beta\|_1\right)}_\text{Penalization}\right\}$$ where, in this study, $x$ is the genotypes and covariables (e.g. PCs), $y$ is disease status we want to predict and $\lambda$ is a regularization parameter that need to be determined. 
+Different regularizations can be used to prevent overfitting, among other benefits: the L2-regularization (ridge, @Hoerl1970) shrinks coefficients and is ideal if there are many predictors drawn from a Gaussian distribution (corresponds to $\alpha = 0$),
+ the L1-regularization (lasso, @Tibshirani1996) forces some of the coefficients to be exactly zero and can be used as a means of variable selection, leading to sparse (and therefore more interpretable) models  (corresponds to $\alpha = 1$), 
+the L1- and L2-regularization (elastic-net, @Zou2005) is a compromise between the two previous penalties and is particularly useful in the $m \gg n$ situation, or any situation where there are many correlated predictors (corresponds to $0 < \alpha < 1$) (@Friedman2010). In this study, we always use $\alpha = 0.5$, without trying to tune the value of this hyper-parameter $\alpha$ (e.g. by grid-search and cross-validation).
+
+To fit this penalized logistic regression, we use a very efficient algorithms based on (@Friedman2010, ...2012 and biglasso...), also implemented in our package bigstatsr. This type of algorithms build predictions for many values of $\lambda$ (typically 100). To get an algorithm free of the choice of this hyper-parameter $\lambda$, we developed a procedure that we called Cross-Model Selection and Averaging (CMSA). First, this method separates the training set in $K$ folds (e.g. 10). Secondly, in turn, each fold is considered as an inner validation set and the others ($K - 1$) folds form an inner training set, the model is trained on the inner training set and the corresponding predictions (scores) for the inner validation set are computed, the vector of scores which maximizes a criterion (e.g. AUC) is determined and the vector of coefficients corresponding to the previous vector of scores is chosen. Finally, the $K$ resulting vectors of coefficients are then combined into one vector (e.g. using the geometric median). Because of L1-regularization, this vector of coefficients is typically very sparse and can be used to make a PRS based on a linear combination of allele counts.
+
 
 \section{Results}
 
