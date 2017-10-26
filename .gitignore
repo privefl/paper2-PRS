@@ -4,7 +4,6 @@ discovery
 *.bloc
 results1
 results2
-figures
 # History files
 .Rhistory
 .Rapp.history
