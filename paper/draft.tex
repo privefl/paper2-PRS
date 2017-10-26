@@ -77,6 +77,8 @@
 \textbf{Supplementary information:}
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \newpage
 \section{Introduction}
 
@@ -96,6 +98,8 @@ In order to make our comparison as comprehensive as possible, we compare differe
 
 We show that penalized logistic regression consistently performs better than the P+T method whereas predictive performance of the P+T method is very sensitive to the threshold of inclusion of SNPs [MONTRER UN GRAPH EN FCT D'INCLUSION].
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Methods}
 
 \subsection{Simulations} \label{sec:simus}
@@ -113,6 +117,9 @@ and we compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \
 For both models, the $y_i$ are then standardized such that they have a variance equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$ where $\epsilon \sim N(0, 1 - h^2)$.
 
 This results in 32 combinations of parameters and we run 100 simulations for each of these combinations (5 times more than in [REF STEPHENS]), resulting of a total of 3200 simulations. For each of these 3200 simulations, we randomly re-sample a training set of 6000 individuals, with the corresponding test set composed of the remaining individuals.
+
+
+[MONTRER UN MANHATTAN PLOT POUR JUSTIFIER 30 IN HLA]
 
 
 \subsection{Predictive performance measures}
@@ -144,11 +151,15 @@ Different regularizations can be used to prevent overfitting, among other benefi
  the L1-regularization (lasso, @Tibshirani1996) forces some of the coefficients to be exactly zero and can be used as a means of variable selection, leading to sparse (and therefore more interpretable) models  (corresponds to $\alpha = 1$), 
 the L1- and L2-regularization (elastic-net, @Zou2005) is a compromise between the two previous penalties and is particularly useful in the $m \gg n$ situation, or any situation where there are many correlated predictors (corresponds to $0 < \alpha < 1$) (@Friedman2010). In this study, we always use $\alpha = 0.5$, without trying to tune the value of this hyper-parameter $\alpha$ (e.g. by grid-search and cross-validation).
 
+[ALSO TRIPLE LOGIT]
+
 To fit this penalized logistic regression, we use a very efficient algorithms based on (@Friedman2010, ...2012 and biglasso...), also implemented in our package bigstatsr. This type of algorithms build predictions for many values of $\lambda$ (typically 100). To get an algorithm free of the choice of this hyper-parameter $\lambda$, we developed a procedure that we called Cross-Model Selection and Averaging (CMSA). First, this method separates the training set in $K$ folds (e.g. 10). Secondly, in turn, each fold is considered as an inner validation set and the others ($K - 1$) folds form an inner training set, the model is trained on the inner training set and the corresponding predictions (scores) for the inner validation set are computed, the vector of scores which maximizes a criterion (e.g. AUC) is determined and the vector of coefficients corresponding to the previous vector of scores is chosen. Finally, the $K$ resulting vectors of coefficients are then combined into one vector (e.g. using the geometric median). Because of L1-regularization, this vector of coefficients is typically very sparse and can be used to make a PRS based on a linear combination of allele counts.
 
 \subsection{Reproduciblity}
 
 All the code used in this paper along with results,  such as execution times and figures,  are available as HTML R notebooks in the Supplementary Materials.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Results}
 
@@ -165,28 +176,44 @@ So, we decided to discard this method for the rest of the simulations.
 
 For the P+T method, we report three different scores of prediction: one including all the SNPs (after clumping), one including only SNPs that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$), and one that maximize the AUC for these two thresholds and a sequence of 100 values from $10^{-0.1}$ to $10^{-100}$ equally spaced on the log-log-scale (Table \ref{tab:thr}). Note that, normally, the optimal threshold would have to be learned on the training set only. We consider this reported maximum AUC as an upper bound of the AUC for the P+T method.
 
+
 [Also return p-values?]
 
-[TIMING: PRS -> 0; logit -> 500-600 with small increase when more causal variants, logit-triple x3]
+First, we show that AUC is highly correlated with the percentage of cases in either the 10\% or 20\% largest PRSs (Figure \ref{fig:AUC-corr}). So, we report only predictive performance in terms of AUC in following results.
 
-[AUC: decrease with M, PRS-all never good, logit-triple better for fancy and almost as good for simple]
+As for the comparison of our methods with the P+T method, we report AUCs greater than 95\%, which is not obtained by the upper bound of the P+T method in any scenario. Our penalized regression method consistently provides better predictive performance than the P+T method. Our method is parallelized and requires only less than 10 minutes to run (with 6 physical cores). Moreover, it results in sparse models (...).
+The P+T runs in only a few seconds because we don't consider the GWAS computation as part of the execution time of the method because this is generally executed by others and then the resulting summary statistics are used to construct a PRS. 
 
-[\% Cases: Linear with AUC, Attention perc cases is == 30%] 
+As for the comparison between our two penalized logistic regression, the classic one (called ``simple'') and the one using additional features coding for recessive and dominant effects (called ``triple''), we report that the ``triple'' method is nearly as good as the ``simple'' one when there are only linear effects and can lead to significantly greater results when there are also dominant and interactions effects. Yet, the ``triple'' solution takes approximately 3 more times to run.
 
+As for general results, we report a decrease of AUC when the number of causal variants $M$ is increasing.
 
+[TROUVER DES AUTRES: \% of decrease for h2 0.8 -> 0.5? Pas bon d'utliser tous les SNPs]
+
+[REPLICATE INDIVIDUALS TO SHOW IF CAN BE USED ON LARGER DATA]
 
 \section{Discussion}
 
+In this comparative study, we proposed other methods as a replacement to the widely used P+T method. 
+We show that jointly estimating the SNP effects using efficient penalized logistic regressions enable to achieve really good performance as reported in previous studies [REF GAD + AUTRE?], better than with the P+T method.
+We are well aware that the P+T method is widely used because it is simple and can use summary statistics already learned from large genotype data, which is not the case for our penalized logistic regressions. 
+Yet, in the case of prediction of disease to be used for clinical interventions, best possible methods should be used, even if it has to be used by large consortia only.
+
+One does not simply identify high-risk individuals (Figure \ref{fig:meme}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 \section*{Acknowledgements}
 
-Authors acknowledge Grenoble Alpes Data Institute, supported by the French National Research Agency under the ``Investissements d?avenir'' program (ANR-15-IDEX-02) and the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01).
+Authors acknowledge Grenoble Alpes Data Institute, supported by the French National Research Agency under the ``Investissements d'avenir'' program (ANR-15-IDEX-02) and the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01). We are also grateful to Félix Balazard for useful discussions about T-Trees.
 
 \vspace*{-12pt}
 
 \bibliographystyle{natbib}
 \bibliography{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 \section*{Supplementary Data}
@@ -196,10 +223,7 @@ Authors acknowledge Grenoble Alpes Data Institute, supported by the French Natio
 \renewcommand{\thetable}{S\arabic{table}}
 \setcounter{table}{0}
 
-\begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{ttrees}}
-\caption{Results of T-Trees vs penalized logistic regression. \textbf{A.} Timing (in seconds). \textbf{B.} Number of predictors of the model. \textbf{C.} AUC. \textbf{D.} Percentage of cases in the 10\% largest scores.}\label{fig:ttrees}
-\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % latex table generated in R 3.4.1 by xtable 1.8-2 package
 % Thu Oct 26 16:46:26 2017
@@ -219,5 +243,26 @@ Authors acknowledge Grenoble Alpes Data Institute, supported by the French Natio
 \caption{The 102 thresholds used in the P+T method for this study.}
 \label{tab:thr}
 \end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{ttrees}}
+\caption{Results of T-Trees vs penalized logistic regression. \textbf{A.} Timing (in seconds). \textbf{B.} Number of predictors of the model. \textbf{C.} AUC. \textbf{D.} Percentage of cases in the 10\% largest scores.}\label{fig:ttrees}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{AUC-corr}}
+\caption{Percentage of cases in the 2 highest deciles of PRSs as a function of AUC.}\label{fig:AUC-corr}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{meme}}
+\caption{Meme to use on Twitter when promoting the preprint?}\label{fig:meme}
+\end{figure}
 
 \end{document}
