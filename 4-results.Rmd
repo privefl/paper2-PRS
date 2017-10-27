@@ -94,3 +94,49 @@ ggsave("figures/ttrees.pdf", scale = 1/90, width = 1580, height = 1070)
 
 ## Results without T-Trees
 
+### Correlation between predictive performance measures
+
+```{r, fig.width=14, out.width="90%", dev="svg"}
+cowplot::plot_grid(
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases10, color = par.dist)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme(legend.position = c(0.8, 0.2)) +
+    labs(y = "Percentage of cases in top 10%", 
+         color = "Distribution\nof effects"),
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases20, color = par.dist)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme(legend.position = c(0.8, 0.2)) +
+    labs(y = "Percentage of cases in top 20%", 
+         color = "Distribution\nof effects"),
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases10, color = par.model)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme(legend.position = c(0.8, 0.2)) +
+    scale_colour_brewer(palette = "Set1") +
+    labs(y = "Percentage of cases in top 10%", 
+         color = "Model"),
+  results %>%
+    filter(par.h2 == 0.8) %>%
+    myggplot(aes(AUC, percCases20, color = par.model)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    theme(legend.position = c(0.8, 0.2)) +
+    scale_colour_brewer(palette = "Set1") +
+    labs(y = "Percentage of cases in top 20%", 
+         color = "Model"),
+  labels = LETTERS[1:4], align = "hv", label_size = 25, scale = 0.95
+)
+```
+
+```{r}
+ggsave("figures/AUC-corr.pdf", scale = 1/90, width = 1300, height = 950)
+```
+
