@@ -282,7 +282,7 @@ params.grid2 <- expand.grid(
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = c(0.5, 0.8), 
   par.model  = c("simple", "fancy"),
-  num.simu   = 1:100,
+  num.simu   = 1:50,
   stringsAsFactors = FALSE
 ) 
 ```

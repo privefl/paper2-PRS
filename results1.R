@@ -27,7 +27,7 @@ results %>%
 
 results %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
-  summarise_at(c("timing", "nb.preds", "AUC", "percCases"), mean)
+  summarise_at(c("timing", "nb.preds", "AUC", "percCases10"), mean)
 
 plot_results <- function(results, y, ylab = y) {
   

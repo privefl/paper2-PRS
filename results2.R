@@ -41,17 +41,13 @@ plot_results <- function(results, y, ylab = y) {
     labs(x = "Method", y = ylab, fill = dist, color = dist)
 }
 
-results %>%
-  filter(!grepl("PRS", method), par.h2 == 0.8) %>%
-  plot_results("timing", "Timing") +
-  scale_y_continuous(breaks = 0:50 * 100, minor_breaks = NULL) 
-ggsave("timing.pdf", scale = 1/90, width = 1200, height = 900)
 
 results %>%
   filter(par.h2 == 0.8) %>%
   plot_results("AUC") +
   scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
-ggsave("AUC.pdf", scale = 1/90, width = 1200, height = 900)
+ggsave("../thesis/paper2-PRS/figures/AUC.pdf", 
+       scale = 1/90, width = 1200, height = 900)
 
 ggsave("perc-cases.pdf", scale = 1/90, width = 1200, height = 900)
 
@@ -67,16 +63,24 @@ results %>%
                 labels = scales::comma_format())
 ggsave("nb-preds.pdf", scale = 1/90, width = 1200, height = 900)
 
-cowplot::plot_grid(
-  results %>%
-    filter(par.h2 == 0.8) %>%
-    myggplot(aes(AUC, percCases10, color = par.dist)) +
-    geom_point() +
-    geom_smooth(method = "lm"),
-  results %>%
-    filter(par.h2 == 0.8) %>%
-    myggplot(aes(AUC, percCases20, color = par.dist)) +
-    geom_point() +
-    geom_smooth(method = "lm"),
-  ncol = 1
-)
+results %>%
+  filter(grepl("logit", method)) %>%
+  group_by(method, par.causal) %>%
+  summarise_at("nb.preds", list("Min" = min, "Max" = max))
+
+
+#### Correlation between 
+
+
+ggsave("../thesis/paper2-PRS/figures/AUC-corr.pdf", 
+       scale = 1/90, width = 1300, height = 950)
+
+summary(lm(AUC ~ percCases10, data = results))
+summary(lm(AUC ~ percCases20, data = results))
+
+results %>%
+  group_by_at(c(vars(starts_with("par")), "num.simu")) %>%
+  mutate(AUC_rel = AUC / AUC[method == "logit-simple"]) %>%
+  # select(-eval, -nb.preds, -percCases10, -percCases20) %>%
+  plot_results(y = "AUC_rel", ylab = "Relative AUC / 'logit-simple'")
+
