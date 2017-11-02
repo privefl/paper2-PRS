@@ -193,10 +193,10 @@ So, we decided to discard this method for the rest of the simulations.
 
 First, we show that AUC is highly correlated ($r^2 > 95\%$) with the percentage of cases in either the 10\% or 20\% largest PRSs (Figure \ref{fig:AUC-corr}). Therefore, AUC can be a good measure at determining whether a score can identify high-risk individuals or not, so we report only predictive performance in terms of AUC in the following results.
 
-Using the penalized logistic regressions, we report AUCs greater than 95\%, which is not obtained by the upper bound of the P+T method in any scenario. Our penalized regression methods consistently provides better predictive performance than the P+T method for all disease architectures tested [FIGURE]. Our method is parallelized and requires only less than 10 minutes to run (with 6 physical cores) [FIGURE]. Moreover, it results in relatively sparse models with no more than 14,000 predictors entering the models even for the linear model of 3000 causal SNPs [TABLE ?FIGURE?].
+Using the penalized logistic regressions, we report AUCs greater than 95\%, which is not obtained by the upper bound of the P+T method in any scenario (Figure \ref{fig:AUC}). Our penalized regression methods consistently provides better predictive performance than the P+T method for all disease architectures tested [ou pas, FIGURE]. Our method is parallelized and requires only less than 10 minutes to run (with 6 physical cores) [TABLE ?FIGURE?]. Moreover, it results in relatively sparse models with no more than 14,000 predictors entering the models even for the linear model of 3000 causal SNPs [TABLE ?FIGURE?].
 P+T runs in only a few seconds because we don't consider the GWAS computation as part of the execution time of the method because this is generally executed by others (e.g.\ consortia) and then only the resulting summary statistics are used to construct a PRS. 
 
-As for the comparison between our two penalized logistic regression, the classic one (called ``simple'') and the one using additional features coding for recessive and dominant effects (called ``triple''), we report that the ``triple'' method is nearly as good as the ``simple'' one when there are only linear effects and can lead to significantly greater results when there are also dominant and interactions effects [FIGURE]. Yet, the ``triple'' solution takes approximately 3 more times to run.
+As for the comparison between our two penalized logistic regression, the classic one (called ``simple'') and the one using additional features coding for recessive and dominant effects (called ``triple''), we report that the ``triple'' method is nearly as good as the ``simple'' one when there are only linear effects and can lead to significantly greater results when there are also dominant and interactions effects (Figure \ref{fig:AUC-rel}). Yet, the ``triple'' solution takes approximately 3 more times to run.
 
 As for general results, we report a decrease of AUC when the number of causal variants $M$ is increasing [BATEAU? quoi d'autre?].
 
@@ -215,6 +215,18 @@ One does not simply identify high-risk individuals (Figure \ref{fig:meme}).
 
 
 [PARLER DU PROBLEME DE POP? + future paper]
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{AUC}}
+\caption{AUC...}\label{fig:AUC}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{AUC-rel}}
+\caption{Relative AUC...}\label{fig:AUC-rel}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
