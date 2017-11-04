@@ -8,9 +8,8 @@ myggplot <- function(..., coeff = 1) {
 top10 <- 1:110
 top20 <- 1:220
 
-results <- list.files("../thesis/paper2-PRS/results1/", full.names = TRUE) %>%
+results <- list.files("../thesis/paper2-PRS/results2/", full.names = TRUE) %>%
   map_dfr(~readRDS(.x)) %>%
-  filter(method != "T-Trees") %>%
   as_tibble() %>%
   mutate(
     par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
@@ -43,7 +42,7 @@ plot_results <- function(results, y, ylab = y) {
 
 
 results %>%
-  filter(par.h2 == 0.8) %>%
+  filter(par.h2 == 0.5) %>%
   plot_results("AUC") +
   scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
 ggsave("../thesis/paper2-PRS/figures/AUC.pdf", 
@@ -83,4 +82,6 @@ results %>%
   mutate(AUC_rel = AUC / AUC[method == "logit-simple"]) %>%
   # select(-eval, -nb.preds, -percCases10, -percCases20) %>%
   plot_results(y = "AUC_rel", ylab = "Relative AUC / 'logit-simple'")
+ggsave("../thesis/paper2-PRS/figures/AUC-rel.pdf", 
+       scale = 1/90, width = 1200, height = 900)
 

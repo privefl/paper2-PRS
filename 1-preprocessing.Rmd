@@ -11,21 +11,22 @@ knitr::opts_chunk$set(fig.align = "center", out.width = "70%",
 options(width = 85)
 ```
 
-## Data
-
 ### QC and imputation
 
-This was done in another paper TODO(add ref).
-
-### Add population from external files
+This was done in [another paper](https://doi.org/10.1101/190926).
 
 ```{r}
 file.copy(paste0("../paper1-packages/backingfiles/celiacQC", c(".bk", ".rds")),
           paste0("backingfiles/celiacQC", c(".bk", ".rds")))
 
 library(bigsnpr)
-celiac <- snp_attach("backingfiles/celiacQC.rds")
+str(celiac <- snp_attach("backingfiles/celiacQC.rds"), max.level = 1)
+```
 
+
+### Add population from external files
+
+```{r}
 # Get population
 pop.files <- list.files(path = "../thesis-celiac/Dubois2010_data/", 
                         pattern = "cluster_*", full.names = TRUE)
@@ -60,19 +61,29 @@ ind.UKcontrols <- which(startsWith(celiac$fam$family.ID, "UK") &
 obj.svd$u[-ind.UKcontrols, ] <- NA
 ```
 
-```{r}
+```{r, warning=FALSE}
 # Compute Mahalanobis distance on PCs
 distM <- rep(NA, nrow(celiac$genotypes))
 distM[ind.UKcontrols] <- robust::covRob(obj.svd$u[ind.UKcontrols, ])$dist
 THR <- 30
 # Plot UK controls, coloring with Mahalanobis distance
-plotlist <- lapply(list(1:2, 3:4, 5:6, 7:8), function(scores) {
+library(magrittr)
+p_list <- lapply(list(1:2, 3:4, 5:6, 7:8), function(scores) {
   plot(obj.svd, type = "scores", scores = scores, coeff = 0.7) + 
     aes(color = (distM > THR)) + 
-    labs(color = "Outlier?")
+    labs(color = "Outlier?") +
+    scale_color_manual(breaks = c(TRUE, FALSE), values = scales::hue_pal()(2))
 }) 
-cowplot::plot_grid(plotlist = plotlist, ncol = 2, align = "hv")
+lapply(p_list, function(p) p + theme(legend.position = "none")) %>%
+  cowplot::plot_grid(plotlist = ., ncol = 2, align = "hv", scale = 0.95) %>%
+  cowplot::plot_grid(cowplot::get_legend(p_list[[1]]),
+                     rel_widths = c(1, 0.15))
 ```
+
+```{r}
+ggsave("figures/outliers-pop.pdf", scale = 1/90, width = 870, height = 650)
+```
+
 
 ```{r}
 # New dataset with only non-outliers UK controls
@@ -83,8 +94,11 @@ obj.svd2 <- snp_autoSVD(celiac2$genotypes,
                         celiac2$map$physical.pos,
                         ncores = nb_cores())
 plot(obj.svd2)
-plot(obj.svd2, type = "scores", scores = 1:2) 
+plot(obj.svd2, type = "scores") 
 # Save this new PCA
 saveRDS(obj.svd2, "backingfiles/PCA2.rds")
 ```
 
+```{r}
+ggsave("figures/no-pop.pdf", scale = 1/80, width = 620, height = 570)
+```

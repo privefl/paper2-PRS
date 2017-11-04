@@ -77,7 +77,7 @@ snp_triple <- function(x) {
   
   newfile <- bigsnpr:::getNewFile(x, "tripled")
   G2 <- FBM.code256(nrow(G), 3 * ncol(G), code = bigsnpr:::CODE_012, 
-            backingfile = newfile, save = TRUE)
+                    backingfile = newfile, save = TRUE)
   
   tripleBM(G, G2)
   
@@ -86,6 +86,7 @@ snp_triple <- function(x) {
 ```
 
 ```{r}
+snp_triple(celiac)
 snp_triple(celiac2)
 ```
 
