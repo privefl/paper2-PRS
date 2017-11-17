@@ -8,7 +8,8 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.asp = 0.7)
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.asp = 0.7,
+                      dev = "svg")
 options(width = 110)
 ```
 
@@ -40,6 +41,11 @@ plot_results <- function(results, y, ylab = y) {
 }
 ```
 
+```{r}
+boot <- function(x, n = 1e5, f = mean) {
+  sd(replicate(n, f(sample(x, replace = TRUE))))
+}
+```
 
 
 ## Results with T-Trees
@@ -69,7 +75,7 @@ results %>%
   print(n = Inf)
 ```
 
-```{r, fig.width=16, out.width="95%", dev="svg"}
+```{r, fig.width=16, out.width="95%", dev="svg", fig.cap="Results of T-Trees vs penalized logistic regression. **A.** Timing (in seconds). **B.** Number of predictors of the model. **C.** AUC. **D.** Percentage of cases in the 10% largest scores."}
 ttrees_vs_logit <- filter(results, method %in% c("T-Trees", "logit-simple"))
 
 p_list <- list(
@@ -117,7 +123,7 @@ results2 <- list.files("results2", full.names = TRUE) %>%
   )
 ```
 
-```{r, fig.width=14, out.width="90%", dev="svg"}
+```{r, fig.width=14, out.width="90%", dev="svg", fig.cap="Percentage of cases in the 2 highest deciles of PRSs as a function of AUC."}
 H2 <- 0.8
 cowplot::plot_grid(
   results2 %>%
@@ -188,7 +194,7 @@ results2 %>%
   scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10)
 ```
 
-```{r}
+```{r, fig.cap="Results of AUC for all combination of parameters and methods when h2=0.5 and h2=0.8"}
 # represent h2=0.8 as a function of h2=0.5
 results2 %>%
   select(starts_with("par"), method, AUC) %>%
@@ -214,7 +220,7 @@ results2 %>%
   filter(par.dist == "laplace", par.h2 == 0.8, par.model == "simple",
          method %in% c("logit-simple", "PRS-max")) %>%
   group_by(par.causal, method) %>%
-  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC, 1e4)) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC, 1e5, mean)) %>%
   myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
   geom_hline(yintercept = 0.5, linetype = 2) +
   geom_bar(stat = "identity", alpha = 0.3, position=position_dodge()) +
@@ -229,7 +235,7 @@ results2 %>%
          grepl("PRS", method)) %>%
   group_by(par.causal, method) %>%
   summarise(AUC_mean = mean(AUC),
-            AUC_boot = boot(AUC, 1e4)) %>%
+            AUC_boot = boot(AUC, 1e5, mean)) %>%
   myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
   geom_hline(yintercept = 0.5, linetype = 2) +
   geom_bar(stat = "identity", alpha = 0.3, position=position_dodge()) +
@@ -275,7 +281,7 @@ results3 %>%
   filter(par.dist == "laplace", par.h2 == 0.8, par.model == "simple",
          method %in% c("logit-simple", "PRS-max")) %>%
   group_by(par.causal, method) %>%
-  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC, 1e4)) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC, 1e5, mean)) %>%
   myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
   geom_hline(yintercept = 0.5, linetype = 2) +
   geom_bar(stat = "identity", alpha = 0.3, position=position_dodge()) +
@@ -290,7 +296,7 @@ results3 %>%
          grepl("PRS", method)) %>%
   group_by(par.causal, method) %>%
   summarise(AUC_mean = mean(AUC),
-            AUC_boot = boot(AUC, 1e4)) %>%
+            AUC_boot = boot(AUC, 1e5, mean)) %>%
   myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
   geom_hline(yintercept = 0.5, linetype = 2) +
   geom_bar(stat = "identity", alpha = 0.3, position=position_dodge()) +
@@ -301,17 +307,17 @@ results3 %>%
 
 ### Prediction on Celiac
 
-```{r}
+```{r, fig.cap="Manhanttan plot for Celiac"}
 knitr::include_graphics("figures/celiac-man.png")
 ```
 
-```{r}
+```{r, fig.cap="Regularization paths for the methods. For LR, line in the result given by CMSA."}
 knitr::include_graphics("figures/celiac-regpath.png")
 ```
 
 ### Misc
 
-```{r}
+```{r, fig.cap="AUC as function of M. For all chromosomes."}
 results2 %>%
   filter(
     # method %in% c("logit-simple", "PRS-max"),
@@ -331,7 +337,7 @@ results2 %>%
   labs(x = "Number of causal SNPs (sqrt-scale)")
 ```
 
-```{r}
+```{r, fig.cap="AUC as function of M. For chromosome 6."}
 results3 %>%
   filter(
     # method %in% c("logit-simple", "PRS-max"),
@@ -351,7 +357,7 @@ results3 %>%
   labs(x = "Number of causal SNPs (sqrt-scale)")
 ```
 
-```{r}
+```{r, fig.cap="AUCs for h2=0.8, dist=gaussian, comparing all chromosomes and chromosome 6."}
 bind_rows(
   bind_cols(results2, simu = rep("all", nrow(results2))),
   bind_cols(results3, simu = rep("chr6", nrow(results3)))
@@ -368,15 +374,15 @@ bind_rows(
   geom_hline(yintercept = 0.94, color = "blue", linetype = 2)
 ```
 
-```{r, fig.cap="Size of effects GWAS vs logistic"}
+```{r, fig.cap="Size of effects GWAS vs logistic, for Celiac"}
 knitr::include_graphics("effects.png")
 ```
 
-```{r}
+```{r, fig.cap="Density of scores from logistic regression by pop."}
 knitr::include_graphics("preds-density2.png")
 ```
 
-```{r}
+```{r, fig.cap="Density of scores from logistic regression by pop and genotype."}
 knitr::include_graphics("preds-density3.png")
 ```
 
