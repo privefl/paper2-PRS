@@ -372,10 +372,17 @@ bind_rows(
 knitr::include_graphics("effects.png")
 ```
 
-```{r, fig.cap=""}
-knitr::include_graphics("perc_cases2.png")
+```{r}
+knitr::include_graphics("preds-density2.png")
 ```
 
+```{r}
+knitr::include_graphics("preds-density3.png")
+```
+
+```{r, fig.cap="Percent of controls (errors) in 199 (homoz bad in test)."}
+knitr::include_graphics("perc_cases2.png")
+```
 
 ```{r, fig.cap="Projection on test set of score of Gad, train on same dataset"}
 knitr::include_graphics("gad-pred.png")

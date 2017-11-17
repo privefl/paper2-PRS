@@ -287,7 +287,7 @@ params.grid2 <- expand.grid(
 ) 
 ```
 
-```{r}
+```{r, eval=TRUE}
 if (!dir.exists("results2")) dir.create("results2")
 
 for (i in rows_along(params.grid2)) {
@@ -318,6 +318,46 @@ for (i in rows_along(params.grid2)) {
     PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple")
+  )
+  print(res)
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
+
+```{r, eval=FALSE}
+if (!dir.exists("results3")) dir.create("results3")
+
+G6 <- big_copy(G, ind.col = which(CHR == 6))
+ind.HLA6 <- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], subset(LD.wiki34, ID == "hild12"))
+
+for (i in rows_along(params.grid2)) {
+  
+  res.file <- paste0("results3/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid2[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G6,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G6), ind.HLA6),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = n.train))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G6, CHR[CHR == 6], POS[CHR == 6], pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G6, pheno.all, covar.all, ind.train, ind.test, "logit-simple")
   )
   print(res)
   params[["res"]] <- list(res)
