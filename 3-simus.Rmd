@@ -235,7 +235,7 @@ params.grid1 <- expand.grid(
 ) 
 ```
 
-```{r}
+```{r, eval=FALSE}
 if (!dir.exists("results1")) dir.create("results1")
 
 for (i in rows_along(params.grid1)) {
@@ -268,13 +268,12 @@ for (i in rows_along(params.grid1)) {
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
     ttrees(TTree, "backingfiles/ttrees", pheno.all, ind.train, ind.test, n.trees = 100)
   )
-  print(res)
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
 
-### Second simulations (without T-Trees)
+### Second simulations (without T-Trees, with logit-triple)
 
 ```{r}
 params.grid2 <- expand.grid(
@@ -282,12 +281,12 @@ params.grid2 <- expand.grid(
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = c(0.5, 0.8), 
   par.model  = c("simple", "fancy"),
-  num.simu   = 1:50,
+  num.simu   = 1:20,
   stringsAsFactors = FALSE
 ) 
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 if (!dir.exists("results2")) dir.create("results2")
 
 for (i in rows_along(params.grid2)) {
@@ -319,24 +318,87 @@ for (i in rows_along(params.grid2)) {
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple")
   )
-  print(res)
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
 
+### Third simulations (without logit-triple)
+
+```{r}
+params.grid3 <- expand.grid(
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple"),
+  num.simu   = 21:100,
+  stringsAsFactors = FALSE
+) 
+```
+
 ```{r, eval=FALSE}
 if (!dir.exists("results3")) dir.create("results3")
 
-G6 <- big_copy(G, ind.col = which(CHR == 6))
-ind.HLA6 <- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], subset(LD.wiki34, ID == "hild12"))
-
-for (i in rows_along(params.grid2)) {
+for (i in rows_along(params.grid3)) {
   
   res.file <- paste0("results3/simu_", i, ".rds")
   if (file.exists(res.file)) next
   
-  params <- params.grid2[i, ]
+  params <- params.grid3[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = n.train))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple")
+  )
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
+
+
+### Fourth simulations (dataset with only chromosome 6)
+
+```{r}
+params.grid4 <- expand.grid(
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r, eval=FALSE}
+if (!dir.exists("results4")) dir.create("results4")
+
+G6 <- big_copy(G, ind.col = which(CHR == 6))
+ind.HLA6 <- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], 
+                         subset(LD.wiki34, ID == "hild12"))
+
+for (i in rows_along(params.grid4)) {
+  
+  res.file <- paste0("results4/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid4[i, ]
   par.causal <- params[["par.causal"]][[1]]
   
   # Simulate phenotypes
@@ -359,7 +421,56 @@ for (i in rows_along(params.grid2)) {
     PRS(G6, CHR[CHR == 6], POS[CHR == 6], pheno.all, covar.all, ind.train, ind.test),
     logit.CMSA(G6, pheno.all, covar.all, ind.train, ind.test, "logit-simple")
   )
-  print(res)
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
+
+### Fifth simulations (varying training size)
+
+```{r}
+params.grid5 <- expand.grid(
+  n.train    = 1:5 * 1000,
+  par.causal = list(c(300, "all")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r, eval=TRUE}
+if (!dir.exists("results5")) dir.create("results5")
+
+for (i in rows_along(params.grid5)) {
+  
+  res.file <- paste0("results5/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid5[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple")
+  )
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
