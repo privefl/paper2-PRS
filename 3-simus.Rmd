@@ -222,7 +222,7 @@ get_pheno <- function(
 }
 ```
 
-### First simulations (with T-Trees)
+### Simulations n°1 (with T-Trees)
 
 ```{r}
 params.grid1 <- expand.grid(
@@ -273,7 +273,7 @@ for (i in rows_along(params.grid1)) {
 }
 ```
 
-### Second simulations (without T-Trees, with logit-triple)
+### Simulations n°2 (without T-Trees, with logit-triple)
 
 ```{r}
 params.grid2 <- expand.grid(
@@ -323,7 +323,7 @@ for (i in rows_along(params.grid2)) {
 }
 ```
 
-### Third simulations (without logit-triple)
+### Simulations n°3 (without logit-triple)
 
 ```{r}
 params.grid3 <- expand.grid(
@@ -373,7 +373,7 @@ for (i in rows_along(params.grid3)) {
 ```
 
 
-### Fourth simulations (dataset with only chromosome 6)
+### Simulations n°4 (dataset with only chromosome 6)
 
 ```{r}
 params.grid4 <- expand.grid(
@@ -386,7 +386,7 @@ params.grid4 <- expand.grid(
 ) 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 if (!dir.exists("results4")) dir.create("results4")
 
 G6 <- big_copy(G, ind.col = which(CHR == 6))
@@ -426,7 +426,7 @@ for (i in rows_along(params.grid4)) {
 }
 ```
 
-### Fifth simulations (varying training size)
+### Simulations n°5 (varying training size)
 
 ```{r}
 params.grid5 <- expand.grid(
