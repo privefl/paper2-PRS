@@ -29,6 +29,7 @@
 \definecolor{trustcolor}{rgb}{0,0,1}
 
 \usepackage{dsfont}
+\usepackage[warn]{textcomp}
 \usepackage{adjustbox}
 \usepackage{multirow}
 \usepackage{graphicx}
@@ -114,32 +115,38 @@ Then, we show that penalized logistic regression consistently performs better th
 
 \subsection{Genotype data}
 
-We use real genotypes of European individuals from a case/control celiac disease cohort \cite[]{dubois2010multiple}. 
-Details of quality control and imputation for this dataset are available in another study \cite[]{prive2017efficient}.
-For simulations, in order to get rid of the structure induced by the celiac disease status, we keep only controls from this cohort. Moreover, to get rid of population structure, we keep only people from UK and further subset these British people based on deviation of robust Mahalanobis distance on Principal Components (see ..SupMat..). This results in 7102 individuals genotyped on ..28x,xxx.. SNPs [ADD DIM TO RMD] with minimal population structure (see ..SupMat..). We decided to get rid of population structure because it can affect the predictive performance of methods, which we will investigate in another study.
+We use real genotypes of European individuals from a case/control celiac disease cohort \cite[]{dubois2010multiple}. Composition of this dataset is presented in table \ref{tab:celiac-data}.
+Details of quality control and imputation for this dataset are available in \cite{prive2017efficient}.
+For simulations, in order to remove the structure induced by the celiac disease status, we first keep only controls from this cohort. Secondly, in order to remove population structure, we keep only people from the UK. Thirdly, we further subset these British people based on deviation of robust Mahalanobis distance on principal components. This 3-step filtering results in 7102 individuals with minimal population structure (see ..SupMat..). We decided to get rid of population structure because it can affect the predictive performance of methods, which we will investigate in another study.
 
 
 \subsection{Simulations of phenotypes} \label{sec:simus}
 
-To simulate phenotypes, we use a the Liability Threshold Model (LTM) with a prevalence of 30\%. We vary different parameters: the number of causal variants and their location (30, 300 or 3000 anywhere in the genome or 30 only in the HLA region), the heritability (0.5 or 0.8), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part.. of the phenotypes (one ``simple model'' with only linear effects, and one ``fancy model'' which combine linear, dominant and interaction effects).
-For the ``simple model'', we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights ($w_j \neq 0$ if and only if SNP $j$ is causal), $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). 
+To simulate phenotypes, we use the Liability Threshold Model (LTM) with a prevalence of 30\%. We vary different parameters: the number of chromosomes used (either all 22 chromosomes or only the chromosome 6), the size of the training set (from 1000 to 6000 by 1000, and the corresponding test set is composed of the remaining individuals), the number of causal variants and their location (30, 300 or 3000 anywhere on the genome or 30 only in the HLA region), the heritability (50\% or 80\%), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part.. of the phenotypes (one ``simple model'' with only linear effects, and one ``fancy model'' which combines linear, dominant and interaction effects).
+For the ``simple model'', we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights (generated with a Gaussian or a Laplace distribution), $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). 
 For the ``fancy model'', we separate the causal SNPs in three equal sets $E_\text{causal}^{(1)}$, $E_\text{causal}^{(2)}$ 
 and $E_\text{causal}^{(3)}$ ($E_\text{causal}^{(3)}$ is further separated in two equal sets, $E_\text{causal}^{(3.1)}$ and $E_\text{causal}^{(3.2)}$). We then compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in E_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|E_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} G_{i,j_2}}}_\text{interaction}$$ where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $E_\text{causal}^{(q)}=\left\{e_k^{(q)},~k \in \left\{1, \ldots, \left|E_\text{causal}^{(q)}\right|\right\}\right\}$. Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still display a marginal effect. 
 For both models, the $y_i$ are then standardized such that they have a variance equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$ where $\epsilon \sim N(0, 1 - h^2)$.
-This results in 32 combinations of parameters and we run 100 simulations for each of these combinations (5 times more than in \cite{zhou2013polygenic}), resulting of a total of 3200 simulations. For each of these 3200 simulations, we randomly re-sample a training set of 6000 individuals, with the corresponding test set composed of the remaining individuals on which we evaluate the different methods.
 
+We make 5 different simulation procedures, summarized in table \ref{tab:simus}. 
+..Simulation.. \textnumero1 uses the whole dataset (the 22 chromosomes), a training set of size 6000 and an heritability of 80\%. It compares all methods (see section \ref{sec:methods}) on all other combination of parameters in 5 simulations. The goal of the first simulation is to quickly discard the T-Trees method.
+For simulation \textnumero2, we make also vary the heritability (50\% or 80\%) but we don't run the T-Trees method anymore. The goal of the second simulation is to compare all remaining methods, especially to see how well the ``logit-triple'' method works. We run 20 simulations.
+For simulation \textnumero3, we continue with 80 more simulations (to reach 100 simulations, i.e.\ 5 times more than in \cite{zhou2013polygenic}), but discarding the ``logit-triple'' method and the ``fancy'' model. 
+Simulation \textnumero4 consists in 100 simulations of remaining methods and combinations of parameters on a dataset composed of only the chromosome 6. Reducing the number of SNPs aims at increasing the ..polygenicity.. of our simulated models and to ..virtually.. increase the sample size [REF? DUDBRIDGE?]. 
+Finally, simulation \textnumero5 reuses the whole dataset but varying the size of the training set in order to assess how it affects predictive performance of the PRS and the ``logit-simple'' methods. 100 simulations are run with only 300 causal SNPs anywhere On the genome. 
 
 
 \subsection{Predictive performance measures}
 
 In this study, we use two different measures of predictive accuracy. 
-First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction}. In the case of our study, the AUC is the probability that a PRS of a case is greater than the PRS of a control.
+First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction,hanley1982meaning,lusted1971signal}. In the case of our study, the AUC is the probability that a PRS of a case is greater than the PRS of a control.
 This measure indicates how well we can distinguish between cases and controls using PRSs.
 As a second measure, we report the percentage of cases in the 10\% and 20\% largest PRSs. This measure indicates how well we can identify high-risk individuals from a higher PRS in screening campaigns.
+[COMMENT ON PREVALENCE?]
 
 Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
 
-\subsection{Compared methods}
+\subsection{Compared methods} \label{sec:methods}
 
 In this study, we compare three different types of methods: the P+T method, the T-Trees method and a penalized logistic regression.
 
@@ -249,7 +256,7 @@ simulation & & training set & (number and location) & of effects & & model & sim
 & & 5000 & & & & & & \\
 \hline
 \end{tabular}
-\label{}
+\label{tab:simus}
 \end{table}
 
 
@@ -286,6 +293,24 @@ Authors acknowledge Grenoble Alpes Data Institute, supported by the French Natio
 \setcounter{figure}{0}
 \renewcommand{\thetable}{S\arabic{table}}
 \setcounter{table}{0}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|cccc|r|}
+\hline
+Population & UK & Finland & Netherlands & Italy & Total\\
+\hline
+Cases & 2569 & 637 & 795 & 495 & 4496\\
+Controls & 7492 & 1799 & 828 & 540 & 10659\\
+\hline
+Total & 10061 & 2436 & 1623 & 1035 & 15155\\
+\hline
+\end{tabular}
+\caption{Number of individuals by population and disease status for the celiac disease cohort (after quality control, genotyped on 281,122 ..mutual.. SNPs).}
+\label{tab:celiac-data}
+\end{table}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
