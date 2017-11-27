@@ -122,7 +122,7 @@ For simulations, in order to remove the structure induced by the celiac disease 
 
 \subsection{Simulations of phenotypes} \label{sec:simus}
 
-To simulate phenotypes, we use the Liability Threshold Model (LTM) with a prevalence of 30\%. We vary different parameters: the number of chromosomes used (either all 22 chromosomes or only the chromosome 6), the size of the training set (from 1000 to 6000 by 1000, and the corresponding test set is composed of the remaining individuals), the number of causal variants and their location (30, 300 or 3000 anywhere on the genome or 30 only in the HLA region), the heritability (50\% or 80\%), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part.. of the phenotypes (one ``simple model'' with only linear effects, and one ``fancy model'' which combines linear, dominant and interaction effects).
+To simulate phenotypes, we use the Liability Threshold Model (LTM) with a prevalence of 30\%. We vary different parameters: the number of chromosomes used (either all 22 chromosomes or only the chromosome 6), the size of the training set (from 1000 to 6000 by 1000, and the corresponding test set is composed of the remaining individuals), the number of causal variants and their location (30, 300 or 3000 anywhere on the dataset or 30 only in the HLA region), the heritability (50\% or 80\%), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part.. of the phenotypes (one ``simple model'' with only linear effects, and one ``fancy model'' which combines linear, dominant and interaction effects).
 For the ``simple model'', we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights (generated with a Gaussian or a Laplace distribution), $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). 
 For the ``fancy model'', we separate the causal SNPs in three equal sets $E_\text{causal}^{(1)}$, $E_\text{causal}^{(2)}$ 
 and $E_\text{causal}^{(3)}$ ($E_\text{causal}^{(3)}$ is further separated in two equal sets, $E_\text{causal}^{(3.1)}$ and $E_\text{causal}^{(3.2)}$). We then compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in E_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|E_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} G_{i,j_2}}}_\text{interaction}$$ where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $E_\text{causal}^{(q)}=\left\{e_k^{(q)},~k \in \left\{1, \ldots, \left|E_\text{causal}^{(q)}\right|\right\}\right\}$. Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still display a marginal effect. 
@@ -130,10 +130,10 @@ For both models, the $y_i$ are then standardized such that they have a variance 
 
 We make 5 different simulation procedures, summarized in table \ref{tab:simus}. 
 ..Simulation.. \textnumero1 uses the whole dataset (the 22 chromosomes), a training set of size 6000 and an heritability of 80\%. It compares all methods (see section \ref{sec:methods}) on all other combination of parameters in 5 simulations. The goal of the first simulation is to quickly discard the T-Trees method.
-For simulation \textnumero2, we make also vary the heritability (50\% or 80\%) but we don't run the T-Trees method anymore. The goal of the second simulation is to compare all remaining methods, especially to see how well the ``logit-triple'' method works. We run 20 simulations.
+For simulation \textnumero2, we make also vary the heritability (50\% or 80\%) but we don't run the T-Trees method anymore. The goal of the second simulation is to compare all remaining methods, especially to see how well the ``logit-triple'' method works. We run 20 simulations for each combination of parameters.
 For simulation \textnumero3, we continue with 80 more simulations (to reach 100 simulations, i.e.\ 5 times more than in \cite{zhou2013polygenic}), but discarding the ``logit-triple'' method and the ``fancy'' model. 
-Simulation \textnumero4 consists in 100 simulations of remaining methods and combinations of parameters on a dataset composed of only the chromosome 6. Reducing the number of SNPs aims at increasing the ..polygenicity.. of our simulated models and to ..virtually.. increase the sample size [REF? DUDBRIDGE?]. 
-Finally, simulation \textnumero5 reuses the whole dataset but varying the size of the training set in order to assess how it affects predictive performance of the PRS and the ``logit-simple'' methods. 100 simulations are run with only 300 causal SNPs anywhere On the genome. 
+Simulation \textnumero4 consists in 100 simulations of remaining methods and combinations of parameters on a dataset composed of only the chromosome 6. Reducing the number of SNPs aims at increasing the ..polygenicity.. of our simulated models and at ..virtually.. increasing the sample size [REF? DUDBRIDGE?]. 
+Finally, simulation \textnumero5 reuses the whole dataset but varying the size of the training set in order to assess how the number of samples affects predictive performance of the PRS and the ``logit-simple'' methods. 100 simulations are run using 300 causal SNPs anywhere on the genome. 
 
 
 \subsection{Predictive performance measures}
@@ -152,11 +152,11 @@ In this study, we compare three different types of methods: the P+T method, the 
 
 The P+T (Pruning + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWASs), called summary statistics.
 For the P+T method, a coefficient of regression is learned independently for each SNP along with a corresponding p-value (the GWAS part). 
-The SNPs are first clumped (P) so that there remains only loci that are weakly correlated with each other. 
-Thresholding (T) consists in removing SNPs that are under a certain level of significance (p-value threshold to be determined). 
-Finally, a polygenic risk score is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients: $$S_i(T) = \sum_{j \in E_\text{clumping}} \mathds{1}\{p_j < T\} \cdot \beta_j \cdot G_{i,j}$$ where $\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS and $T$ is a threshold on p-values to be determined. In this study, we report scores for a clumping threshold at $r^2 > 0.2$ with regions of 500kb. 
+The SNPs are first clumped (P) so that there remain only loci that are weakly correlated with each other. 
+Then, thresholding (T) consists in removing SNPs that are within a certain level of significance (p-value threshold to be determined). 
+Finally, a polygenic risk score is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients: $$S_i(T) = \sum_{j \in E_\text{clumping}} \mathds{1}\{p_j < T\} \cdot \beta_j \cdot G_{i,j}$$ where $\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS and $T$ is a threshold on p-values to be determined. In this study, we report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb. 
 
-For the P+T method, we report three different scores of prediction: one including all the SNPs (after clumping), one including only SNPs that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$), and one that maximizes the AUC for these two thresholds and a sequence of 100 values of thresholds ranging from $10^{-0.1}$ to $10^{-100}$ and equally spaced on the log-log-scale (Table \ref{tab:thr}). Note that, normally, the optimal threshold would have to be learned on the training set only. We consider this reported maximum AUC as an upper bound of the AUC for the P+T method.
+For the P+T method, we report three different scores of prediction: one including all the SNPs (remaining after clumping), one including only SNPs that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$), and one that maximizes the AUC for these two thresholds and a sequence of 100 values of thresholds ranging from $10^{-0.1}$ to $10^{-100}$ and equally spaced on the log-log-scale (Table \ref{tab:thr}). Note that, normally, the optimal threshold would have to be learned on the training set only. We consider this reported maximum AUC as an upper bound of the AUC for the P+T method.
 We call these three reported scores respectively ``PRS-all'', ``PRS-stringent'' and ``PRS-max'' in the results.
 
 T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests \cite[]{breiman2001random} that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data \cite[]{botta2014exploiting}. Since this method is significantly different from the other tested here and achieved surprisingly results in the past, we decided to include T-Trees in this comparison in order to assess whether or not it could give superior predictive performance. We use the same parameters as reported in Table 4 of \cite{botta2014exploiting}. Yet, we use only 100 trees (instead of 1000) because it showed only a very subtle increase of AUC while taking way too much time (e.g.\ AUC of 81.5\% instead of 81\%, data not shown). %We call this method ``T-Trees'' in the results.
@@ -175,7 +175,7 @@ In order to capture recessive and dominant effects in addition to linear effects
 
 \subsection{Reproduciblity}
 
-All the code used in this paper along with results, such as figures, are available as HTML R notebooks in the Supplementary Materials.
+All the code used in this paper along with results such as figures and tables, are available as HTML R notebooks in the Supplementary Materials.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -209,7 +209,7 @@ As for general results, we report a decrease of AUC when the number of causal va
 
 [TROUVER DES AUTRES: \% of decrease for h2 0.8 -> 0.5? Pas bon d'utliser tous les SNPs]
 
-[REPLICATE INDIVIDUALS TO SHOW IF CAN BE USED ON LARGER DATA]
+\subsection{Simulations varying training size and number of SNPs}
 
 \section{Discussion}
 
