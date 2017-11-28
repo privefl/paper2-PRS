@@ -55,7 +55,7 @@ top10 <- 1:110
 top20 <- 1:220
 
 # Put all results in a single tibble
-results <- list.files("results1", full.names = TRUE) %>%
+results1 <- list.files("results1", full.names = TRUE) %>%
   map_dfr(~readRDS(.x)) %>%
   as_tibble() %>%
   mutate(
@@ -68,15 +68,14 @@ results <- list.files("results1", full.names = TRUE) %>%
 ```
 
 ```{r}
-results %>%
-  filter(method %in% c("T-Trees", "logit-simple")) %>%
+results1 %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise_at(c("timing", "nb.preds", "AUC", "percCases10", "percCases20"), mean) %>%
   print(n = Inf)
 ```
 
 ```{r, fig.width=16, out.width="95%", dev="svg", fig.cap="Results of T-Trees vs penalized logistic regression. **A.** Timing (in seconds). **B.** Number of predictors of the model. **C.** AUC. **D.** Percentage of cases in the 10% largest scores."}
-ttrees_vs_logit <- filter(results, method %in% c("T-Trees", "logit-simple"))
+ttrees_vs_logit <- filter(results1, method %in% c("T-Trees", "logit-simple"))
 
 p_list <- list(
   plot_results(ttrees_vs_logit, "timing", "Timing (in seconds)") +
@@ -316,46 +315,6 @@ knitr::include_graphics("figures/celiac-regpath.png")
 ```
 
 ### Misc
-
-```{r, fig.cap="AUC as function of M. For all chromosomes."}
-results2 %>%
-  filter(
-    # method %in% c("logit-simple", "PRS-max"),
-    grepl("all", par.causal)
-  ) %>%
-  mutate(M = readr::parse_number(par.causal)) %>%
-  group_by(M, par.dist, par.h2, par.model, method) %>%
-  summarise(AUC = mean(AUC)) %>%
-  # filter(par.h2 == 0.8, par.dist == "gaussian", par.model == "simple") %>%
-  filter(par.h2 == 0.8) %>%
-  myggplot(aes(M, AUC, color = method)) +
-  geom_line() + 
-  geom_point(size = 2) +
-  facet_grid(par.dist ~ par.model) +
-  scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10) +
-  scale_x_sqrt(breaks = c(30, 300, 1200, 3000)) +
-  labs(x = "Number of causal SNPs (sqrt-scale)")
-```
-
-```{r, fig.cap="AUC as function of M. For chromosome 6."}
-results3 %>%
-  filter(
-    # method %in% c("logit-simple", "PRS-max"),
-    grepl("all", par.causal)
-  ) %>%
-  mutate(M = readr::parse_number(par.causal)) %>%
-  group_by(M, par.dist, par.h2, par.model, method) %>%
-  summarise(AUC = mean(AUC)) %>%
-  # filter(par.h2 == 0.8, par.dist == "gaussian", par.model == "simple") %>%
-  filter(par.h2 == 0.8) %>%
-  myggplot(aes(M, AUC, color = method)) +
-  geom_line() + 
-  geom_point(size = 2) +
-  facet_grid(par.dist ~ par.model) +
-  scale_y_continuous(breaks = 0:10 / 10, minor_breaks = c(0:9 + 0.5) / 10) +
-  scale_x_sqrt(breaks = c(30, 300, 1200, 3000)) +
-  labs(x = "Number of causal SNPs (sqrt-scale)")
-```
 
 ```{r, fig.cap="AUCs for h2=0.8, dist=gaussian, comparing all chromosomes and chromosome 6."}
 bind_rows(
