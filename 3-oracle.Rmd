@@ -1,0 +1,220 @@
+---
+title: "Oracle"
+author: "Florian Privé"
+date: "November 17, 2017"
+output: 
+  html_document:
+    code_folding: show
+bibliography: paper/refs.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
+                      fig.asp = 0.7, dev = "svg")
+options(width = 110)
+```
+
+## Data and useful functions
+
+```{r, message=FALSE}
+library(tidyverse)
+library(bigsnpr)
+library(foreach)
+celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
+CHR <- celiac2$map$chromosome
+POS <- celiac2$map$physical.pos
+(G <- celiac2$genotypes)
+# (G2 <- big_attach("backingfiles/celiacQC_sub1_tripled1.rds"))
+# 
+# covar.all <- readRDS("backingfiles/PCA2.rds")$u
+# 
+# n <- nrow(G)
+# n.train <- 6e3
+ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
+NCORES <- nb_cores()
+```
+
+```{r}
+myggplot <- function(..., coeff = 1) {
+  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
+} 
+```
+
+```{r}
+boot <- function(x, n = 1e5, f = mean) {
+  sd(replicate(n, f(sample(x, replace = TRUE))))
+}
+```
+
+## Get maximum AUCs
+
+```{r}
+K <- 0.3
+```
+
+
+### Estimation from Wray 2010
+
+Computation of the maximum AUC from equation (3) of @wray2010genetic. Approximation is less accurate for high heritabilities.
+
+```{r}
+sapply(c(0.5, 0.8), function(h2) {
+  T0 <- qnorm(1 - K)
+  z <- dnorm(T0)
+  i <- z / K
+  v <- -i * K / (1 - K)
+  num <- (i - v) * h2
+  deno.part <- 1 - h2 * i * (i - T0) + (1 - h2 * v * (v - T0))
+  pnorm(num / sqrt(h2 * deno.part))
+})
+```
+
+### Common estimation for all simulations
+
+Assuming that $y \sim N(0, h^2)$ and knowing that $\epsilon \sim N(0, 1-h^2)$, we can estimate the theoretical value of the AUC that can be achieved given the heritability $h^2$ and a liability threshold model on $y + \epsilon$ with a prevalence of 30%.
+
+```{r}
+nsimu <- 1e7
+
+doParallel::registerDoParallel(NCORES)
+aucs <- foreach(i = seq_len(100), .combine = "cbind") %:%
+  foreach(h2 = c(0.5, 0.8), .combine = "rbind") %dopar% {
+    S <- rnorm(nsimu, mean = 0, sd = sqrt(h2))
+    E <- rnorm(nsimu, mean = 0, sd = sqrt(1 - h2))
+    Y <- (S + E) > qnorm(1 - K)
+    
+    AUC(S, Y)
+  }
+doParallel::stopImplicitCluster()
+apply(aucs, 1, summary)
+```
+
+
+### Different estimations for all simulations
+
+```{r}
+get_oracle <- function(
+  G,                                        ## matrix of genotypes
+  h2,                                       ## heritability 
+  M,                                        ## nbs of causal variants
+  ind.possible = cols_along(G),             ## indices of possible causal variants
+  effects.dist = c("gaussian", "laplace"),  ## distribution of effects 
+  model = c("simple", "fancy"),             ## model for simulation
+  K = 0.3                                   ## prevalence
+) {
+  
+  effects.dist  <- match.arg(effects.dist)
+  model <- match.arg(model)
+  
+  set <- sample(ind.possible, size = M)
+  effects <- `if`(effects.dist == "gaussian", 
+                  rnorm(M, sd = sqrt(h2 / M)),
+                  rmutil::rlaplace(M, s = sqrt(h2 / (2*M))))
+  
+  if (model == "simple") {
+    # only linear
+    y.simu <- scale(G[, set]) %*% effects
+  } else {
+    sets <- split(1:M, sample(rep_len(1:3, M)))
+    # linear
+    ind1 <- sets[[1]]
+    y.simu <- scale(G[, set[ind1]]) %*% effects[ind1]
+    # recessive / dominant
+    ind2 <- sets[[2]]
+    y.simu <- y.simu + scale(G[, set[ind2]] > 0.5) %*% effects[ind2]
+    # interactions
+    ind3 <- matrix(sets[[3]], ncol = 2)
+    y.simu <- y.simu + scale(G[, set[ind3[, 1]]] * G[, set[ind3[, 2]]]) %*% 
+      effects[ind3[, 1]] * sqrt(2)
+  }
+  
+  y.simu <- y.simu / sd(y.simu) * sqrt(h2)
+  stopifnot(all.equal(drop(var(y.simu)), h2))
+  S <- y.simu
+  y.simu <- S + rnorm(nrow(G), sd = sqrt(1 - h2))
+  pheno <- as.numeric(y.simu > qnorm(1 - K))
+  AUC(S, pheno)
+}
+```
+
+```{r}
+params.grid2 <- expand.grid(
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c("simple", "fancy"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r}
+AUC_oracle <- function(G, params, ind.HLA) {
+  
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  AUC <- get_oracle(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  params$AUC <- AUC
+  params
+}
+```
+
+#### On all 22 chromosomes
+
+```{r}
+doParallel::registerDoParallel(NCORES)
+oracles <- foreach(i = rows_along(params.grid2), .combine = "rbind") %dopar% {
+  AUC_oracle(G, params.grid2[i, ], ind.HLA)
+}
+doParallel::stopImplicitCluster()
+```
+
+
+```{r}
+oracles %>% 
+  mutate(
+    par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
+                        levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
+  group_by(par.causal, par.dist, par.h2, par.model) %>%
+  summarise(AUC_mean = round(mean(AUC), 3),
+            AUC_mean_boot = round(boot(AUC, 1e4, mean), 4)) %>%
+  print(n = Inf)
+```
+
+#### On only the chromosome 6
+
+```{r}
+G6 <- big_copy(G, ind.col = which(CHR == 6))
+ind.HLA6 <- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], 
+                         subset(LD.wiki34, ID == "hild12"))
+
+doParallel::registerDoParallel(NCORES)
+oracles_chr6 <- foreach(i = rows_along(params.grid2), .combine = "rbind") %dopar% {
+  AUC_oracle(G6, params.grid2[i, ], ind.HLA6)
+}
+doParallel::stopImplicitCluster()
+```
+
+```{r}
+tmp <- oracles_chr6 %>% 
+  mutate(
+    par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
+                        levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
+  group_by(par.causal, par.dist, par.h2, par.model) %>%
+  summarise(AUC_mean = round(mean(AUC), 4),
+            AUC_mean_boot = round(boot(AUC, 1e4, mean), 4)) %>%
+  print(n = Inf)
+```
+
+
+## References

@@ -109,6 +109,7 @@ In this study, we particularly extend the work of \cite{abraham2013performance} 
 Then, we show that penalized logistic regression consistently performs better than the P+T method whereas predictive performance of the P+T method is very sensitive to the threshold of inclusion of SNPs, depending of the architecture of disease, as shown in \cite{ware2017heterogeneity}.
 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Methods}
@@ -128,6 +129,7 @@ For the ``fancy model'', we separate the causal SNPs in three equal sets $E_\tex
 and $E_\text{causal}^{(3)}$ ($E_\text{causal}^{(3)}$ is further separated in two equal sets, $E_\text{causal}^{(3.1)}$ and $E_\text{causal}^{(3.2)}$). We then compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in E_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|E_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} G_{i,j_2}}}_\text{interaction}$$ where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $E_\text{causal}^{(q)}=\left\{e_k^{(q)},~k \in \left\{1, \ldots, \left|E_\text{causal}^{(q)}\right|\right\}\right\}$. Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still display a marginal effect. 
 For both models, the $y_i$ are then standardized such that they have a variance equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$ where $\epsilon \sim N(0, 1 - h^2)$.
 
+
 We make 5 different simulation procedures, summarized in table \ref{tab:simus}. 
 ..Simulation.. \textnumero1 uses the whole dataset (the 22 chromosomes), a training set of size 6000 and an heritability of 80\%. It compares all methods (see section \ref{sec:methods}) on all other combination of parameters in 5 simulations. The goal of the first simulation is to quickly discard the T-Trees method.
 For simulation \textnumero2, we make also vary the heritability (50\% or 80\%) but we don't run the T-Trees method anymore. The goal of the second simulation is to compare all remaining methods, especially to see how well the ``logit-triple'' method works. We run 20 simulations for each combination of parameters.
@@ -136,7 +138,7 @@ Simulation \textnumero4 consists in 100 simulations of remaining methods and com
 Finally, simulation \textnumero5 reuses the whole dataset but varying the size of the training set in order to assess how the number of samples affects predictive performance of the PRS and the ``logit-simple'' methods. 100 simulations are run using 300 causal SNPs anywhere on the genome. 
 
 
-\subsection{Predictive performance measures}
+\subsection{Predictive performance measures}\label{sec:auc}
 
 In this study, we use two different measures of predictive accuracy. 
 First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction,hanley1982meaning,lusted1971signal}. In the case of our study, the AUC is the probability that a PRS of a case is greater than the PRS of a control.
@@ -181,9 +183,17 @@ All the code used in this paper along with results such as figures and tables, a
 
 \section{Results}
 
+
 [MONTRER UN MANHATTAN PLOT POUR JUSTIFIER 30 IN HLA]
 
 [MONTRER UN GRAPH EN FCT D'INCLUSION]
+
+\subsection{Maximum AUCs}
+
+[MOVE IN SUPMAT AND METHODS]
+
+Assuming that $y \sim N(0, h^2)$, we can estimate the theoretical value of the AUC that can be achieved given the heritability $h^2$ (see ..SupMat..). We report AUCs of 0.8410 and 0.9406 for respectively an heritability of 50\% and 80\%.
+% wray2010genetic
 
 \subsection{Overview and naming}
 
@@ -194,9 +204,16 @@ The goal was to quickly discard the T-Trees method as being competitive with the
 For example, compared to our penalized logistic regression, T-Trees perform worse for both predictive measures, the AUC and the percentage of cases in highest scores (Figure \ref{fig:ttrees}). Moreover, T-Trees takes longer to run and makes more complex predictive models because it uses more SNPs in the models and has non-linear effects (Figure \ref{fig:ttrees}).
 So, we decided to discard this method for the rest of the simulations.
 
+\subsection{Scenario \textnumero1}
+
+In scenario \textnumero1, we compared our penalized logistic regression (``logit-simple'') with the P+T method (``PRS'') on the whole genome (Table \ref{tab:simus}). 
+When there are only 30 causal SNPs, our penalized logistic regression almost reach the maximum achievable AUC (Figures \ref{fig:main-AUC-logit} \& \ref{fig:supp-AUC-logit}).
+Still in terms of AUC, our penalized regression consistently performs better or equally to the ``PRS-max''. 
+In the case where there are correlation between predictors (i.e.\ when we simulate 30 SNPs in the HLA region), the ``logit-simple'' method particularly performs better than the ``PRS-max'' one, with a mean AUC of 92.5\% versus 83\%, for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
+[NUL] Moreover, results of PRS can dramatically drop given the threshold of inclusion of SNPs in the model (Figures \ref{fig:main-AUC-PRS} \& \ref{fig:supp-AUC-PRS}).
+
 \subsection{Main simulations}
 
-[Also return p-values?]\\
 
 First, we show that AUC is highly correlated ($r^2 > 95\%$) with the percentage of cases in either the 10\% or 20\% largest PRSs (Figure \ref{fig:AUC-corr}). Therefore, AUC can be a good measure at determining whether a score can identify high-risk individuals or not, so we report only predictive performance in terms of AUC in the following results.
 
@@ -262,14 +279,14 @@ simulation & & training set & (number and location) & of effects & & model & sim
 
 \newpage
 \begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{AUC}}
-\caption{AUC...}\label{fig:AUC}
+\centerline{\includegraphics[width=\textwidth]{main-AUC-logit}}
+\caption{Mean of AUC over 100 simulations for our penalized logistic regression (``logit-simple'') and the maximum AUC reported with the P+T method (``PRS-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:main-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{AUC-rel}}
-\caption{Relative AUC...}\label{fig:AUC-rel}
+\centerline{\includegraphics[width=\textwidth]{main-AUC-PRS}}
+\caption{Mean of AUC over 100 simulations for ..the three reported PRSs... Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:main-AUC-PRS}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -335,23 +352,31 @@ Total & 10061 & 2436 & 1623 & 1035 & 15155\\
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\newpage
 \begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{ttrees}}
-\caption{Results of T-Trees vs penalized logistic regression. \textbf{A.} Timing (in seconds). \textbf{B.} Number of predictors of the model. \textbf{C.} AUC. \textbf{D.} Percentage of cases in the 10\% largest scores.}\label{fig:ttrees}
+\centerline{\includegraphics[width=\textwidth]{supp-AUC-logit}}
+\caption{[COPY FOR H2=0.5]}\label{fig:supp-AUC-logit}
 \end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-AUC-PRS}}
+\caption{[COPY FOR H2=0.5]}\label{fig:supp-AUC-PRS}
+\end{figure}
+
+%\begin{figure}[h]
+%\centerline{\includegraphics[width=\textwidth]{ttrees}}
+%\caption{Results of T-Trees vs penalized logistic regression. \textbf{A.} Timing (in seconds). \textbf{B.} Number of predictors of the model. \textbf{C.} AUC. \textbf{D.} Percentage of cases in the 10\% largest scores.}\label{fig:ttrees}
+%\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{AUC-corr}}
-\caption{Percentage of cases in the 2 highest deciles of PRSs as a function of AUC.}\label{fig:AUC-corr}
-\end{figure}
+%\begin{figure}[h]
+%\centerline{\includegraphics[width=\textwidth]{AUC-corr}}
+%\caption{Percentage of cases in the 2 highest deciles of PRSs as a function of AUC.}\label{fig:AUC-corr}
+%\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{meme}}
-\caption{Meme to use on Twitter when promoting the preprint?}\label{fig:meme}
-\end{figure}
 
 \end{document}
