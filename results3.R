@@ -1,3 +1,7 @@
+methods.color <- setNames(scales::hue_pal()(6), 
+                          c("logit-simple", "PRS-max", "PRS-stringent",
+                            "T-Trees", "logit-triple", "PRS-all")) 
+
 library(tidyverse)
 
 format_results <- function(results) {
@@ -25,50 +29,52 @@ results3.summary <- results3 %>%
 
 barplot_causal <- function(results, h2) {
   
+  results %>%
+    myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
+    geom_hline(yintercept = 0.5, linetype = 2) +
+    geom_bar(stat = "identity", alpha = 0.3, position = position_dodge()) +
+    geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, ymax = AUC_mean + 2 * AUC_boot),
+                  position = position_dodge(width = 0.9), color = "black", width = 0.2) + 
+    scale_y_continuous(limits = c(0.5, NA), minor_breaks = 0:20 / 20,
+                       oob = scales::rescale_none) +
+    labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
+         fill = "Method", color = "Method") +
+    scale_fill_manual(values = methods.color) +
+    scale_color_manual(values = methods.color)
+}
+
+barplot_causal_one <- function(results, h2) {
+  
   auc_max <- `if`(h2 == 0.8, 0.94, 0.84)
   
   results %>%
     filter(par.h2 == h2) %>%
-    myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
-    geom_hline(yintercept = 0.5, linetype = 2) +
+    barplot_causal() +
     geom_hline(yintercept = auc_max, linetype = 3, color = "blue") +
-    geom_bar(stat = "identity", alpha = 0.3, position = position_dodge()) +
-    geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, ymax = AUC_mean + 2 * AUC_boot),
-                  position=position_dodge(width=0.9), color = "black", width = 0.2) +
-    facet_grid(par.dist ~ .) + 
-    scale_y_continuous(limits = c(0.5, NA), minor_breaks = 0:20 / 20,
-                       oob = scales::rescale_none) +
-    theme(strip.text.x = element_text(size = rel(2)),
-          strip.text.y = element_text(size = rel(2)))+
-    labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
-         fill = "Method", color = "Method")
+    facet_grid(par.dist ~ .)
 }
 
 results3.summary %>%
   filter(method %in% c("logit-simple", "PRS-max")) %>%
-  barplot_causal(h2 = 0.8) +
-  scale_fill_brewer(type = "qual", palette = 2) +
-  scale_color_brewer(type = "qual", palette = 2)
+  barplot_causal_one(h2 = 0.8)
 
 ggsave("figures/main-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
 
 results3.summary %>%
   filter(grepl("PRS", method)) %>%
-  barplot_causal(h2 = 0.8)
+  barplot_causal_one(h2 = 0.8)
 
 ggsave("figures/main-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
 
 results3.summary %>%
   filter(method %in% c("logit-simple", "PRS-max")) %>%
-  barplot_causal(h2 = 0.5) +
-  scale_fill_brewer(type = "qual", palette = 2) +
-  scale_color_brewer(type = "qual", palette = 2)
+  barplot_causal_one(h2 = 0.5)
 
 ggsave("figures/supp-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
 
 results3.summary %>%
   filter(grepl("PRS", method)) %>%
-  barplot_causal(h2 = 0.5)
+  barplot_causal_one(h2 = 0.5)
 
 ggsave("figures/supp-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
 
