@@ -1,0 +1,372 @@
+---
+title: "Results"
+author: "Florian Privé"
+date: "November 17, 2017"
+output: 
+  html_document:
+    code_folding: hide
+params:
+  ggsave: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.width = 10,
+                      fig.asp = 0.75, dev = "svg")
+options(width = 110)
+```
+
+## Useful functions
+
+```{r, message=FALSE}
+library(tidyverse)
+
+methods.color <- setNames(scales::hue_pal()(6), 
+                          c("logit-simple", "PRS-max", "PRS-stringent",
+                            "T-Trees", "logit-triple", "PRS-all")) 
+```
+
+```{r}
+format_results <- function(results) {
+  results %>%
+    as_tibble() %>%
+    mutate(
+      par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
+                          levels = c("30 in HLA", paste(3 * 10^(1:3), "in all"))),
+      AUC = map_dbl(eval, ~bigstatsr::AUC(.x[, 1], .x[, 2]))
+    )
+}
+```
+
+```{r}
+boot <- function(x, n = 1e4, f = mean) {
+  sd(replicate(n, f(sample(x, replace = TRUE))))
+}
+```
+
+```{r}
+myggplot <- function(..., coeff = 1) {
+  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff) +
+  theme(strip.text.x = element_text(size = rel(2)),
+        strip.text.y = element_text(size = rel(2)))
+} 
+```
+
+```{r}
+barplot_causal <- function(results, h2) {
+  
+  results %>%
+    myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
+    geom_hline(yintercept = 0.5, linetype = 2) +
+    geom_bar(stat = "identity", alpha = 0.3, position = position_dodge()) +
+    geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, ymax = AUC_mean + 2 * AUC_boot),
+                  position = position_dodge(width = 0.9), color = "black", width = 0.2) + 
+    scale_y_continuous(limits = c(0.5, NA), minor_breaks = 0:20 / 20,
+                       oob = scales::rescale_none) +
+    labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
+         fill = "Method", color = "Method") +
+    scale_fill_manual(values = methods.color) +
+    scale_color_manual(values = methods.color)
+}
+
+barplot_causal_one <- function(results, h2) {
+  
+  auc_max <- `if`(h2 == 0.8, 0.94, 0.84)
+  
+  results %>%
+    filter(par.h2 == h2) %>%
+    barplot_causal() +
+    geom_hline(yintercept = auc_max, linetype = 3, color = "blue") +
+    facet_grid(par.dist ~ .)
+}
+
+barplot_causal_all <- function(results) {
+  
+  results %>%
+    barplot_causal() +
+    geom_hline(aes(yintercept = auc_max), linetype = 3, color = "blue",
+               data = data.frame(par.h2 = c(0.5, 0.8), auc_max = c(0.84, 0.94))) +
+    facet_grid(par.dist ~ par.h2)
+}
+```
+
+```{r}
+compare_logit <- function(results, with_method) {
+  
+  results <- filter(
+    results, method %in% c("logit-simple", with_method), par.h2 == 0.8)
+  
+  results.summary <- results %>%
+    group_by_at(c(vars(starts_with("par")), "method")) %>%
+    summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+    print(n = Inf)
+  
+  nsimu <- results.summary$N[[1]]
+  stopifnot(all(results.summary$N == nsimu))
+  
+  plot_extra <- function(y, ylab = y) {
+    
+    results %>%
+      myggplot() +
+      geom_boxplot(aes_string("par.causal", y, color = "method", 
+                              fill = "method"), alpha = 0.3) + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      facet_grid(par.model ~ par.dist) +
+      labs(x = "Causal SNPs (number and location)", y = ylab, 
+           fill = "Method", color = "Method") +
+      theme(legend.position = "none") +
+      scale_fill_manual(values = methods.color) +
+      scale_color_manual(values = methods.color) +
+      scale_y_continuous(limits = c(0, NA))
+  }
+  
+  p1 <- results.summary %>%
+    barplot_causal_one(h2 = 0.8) +
+    facet_grid(par.model ~ par.dist) +
+    labs(y = sprintf("Mean of %d AUCs", nsimu))
+  
+  p2 <- cowplot::plot_grid(
+    plot_extra("nb.preds", "Number of predictors"),
+    plot_extra("timing", "Execution time (in seconds)"),
+    ncol = 1, align = "hv", scale = 0.95, 
+    labels = LETTERS[2:3], label_size = 15
+  )
+  
+  p12 <- cowplot::plot_grid(
+    p1 + theme(legend.position = "none"), p2, 
+    ncol = 2, scale = 0.95, rel_widths = c(6, 4), 
+    labels = c("A", ""), label_size = 15
+  )
+  
+  cowplot::plot_grid(
+    cowplot::get_legend(p1 + theme(legend.direction = "horizontal")), p12, 
+    rel_heights = c(0.1, 1), ncol = 1
+  )
+}
+```
+
+## Results with T-Trees
+
+```{r}
+results1 <- list.files("results1", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+```
+
+```{r, out.width="90%", fig.width = 14}
+compare_logit(results1, with_method = "T-Trees")
+
+ggsave("figures/supp-ttrees.pdf", scale = 1/90, width = 1400, height = 1060)
+```
+
+## Results with logit-triple & model fancy
+
+```{r}
+results2 <- list.files("results2", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+
+results2.summary <- results2 %>%
+  group_by_at(c(vars(starts_with("par")), "method")) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+  print(n = Inf) 
+```
+
+### Results with logit-triple
+
+```{r, out.width="90%", fig.width = 14}
+compare_logit(bind_rows(results1, results2), with_method = "logit-triple")
+
+ggsave("figures/supp-triple.pdf", scale = 1/90, width = 1400, height = 1060)
+```
+
+```{r}
+results2.summary %>%
+  filter(grepl("logit", method)) %>%
+  barplot_causal_one(h2 = 0.5) +
+  facet_grid(par.dist ~ par.model) +
+  labs(y = "Mean of 20 AUCs")
+
+ggsave("figures/supp-AUC-triple.pdf", scale = 1/90, width = 1242, height = 951)
+```
+
+
+### Results with model fancy
+
+```{r}
+results2.summary %>%
+  filter(par.model == "fancy", method %in% c("logit-simple", "PRS-max")) %>%
+  barplot_causal_all() +
+  labs(y = "Mean of 20 AUCs")
+  
+ggsave("figures/supp-AUC-logit-fancy.pdf", scale = 1/90, width = 1242, height = 951)
+```
+
+```{r}
+results2.summary %>%
+  filter(par.model == "fancy", grepl("PRS", method)) %>%
+  barplot_causal_all() +
+  labs(y = "Mean of 20 AUCs")
+
+ggsave("figures/supp-AUC-PRS-fancy.pdf", scale = 1/90, width = 1242, height = 951)
+```
+
+## Results with only logit-simple & PRSs
+
+### Correlation between predictive measures
+
+```{r}
+results3 <- list.files(paste0("results", 2:3), full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  filter(method != "logit-triple", par.model != "fancy") %>%
+  format_results()
+
+results3_corr <- results3 %>%
+  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  mutate(
+    percCases10 = map_dbl(eval, ~mean(.x[order(.x[, 1], decreasing = TRUE)[1:110], 2])),
+    percCases20 = map_dbl(eval, ~mean(.x[order(.x[, 1], decreasing = TRUE)[1:220], 2])),
+    Parameters  = interaction(paste("h2 =", par.h2), par.dist, method, sep = " | ")
+  )
+```
+
+```{r, fig.asp=0.5, out.width="90%", fig.width=15}
+p1 <- results3_corr %>%
+  myggplot(aes(AUC, percCases10, color = Parameters)) + 
+  geom_point(size = 0.6, alpha = 0.5) +
+  geom_smooth(aes(linetype = Parameters), method = "lm", se = FALSE, size = 2) +
+  theme(legend.key.width = unit(3.5, "line"), 
+        legend.direction = "horizontal") + 
+  labs(y = "Proportion of cases among top 10% scores")
+p2 <- results3_corr %>%
+  myggplot(aes(AUC, percCases20, color = Parameters)) + 
+  geom_point(size = 0.6, alpha = 0.5) +
+  geom_smooth(aes(linetype = Parameters), method = "lm", se = FALSE, size = 2) + 
+  labs(y = "Proportion of cases among top 20% scores") +
+  theme(legend.position = "none")
+
+cowplot::plot_grid(p1 + theme(legend.position = "none"), p2 , 
+                   ncol = 2, align = "hv", scale = 0.95) %>%
+  cowplot::plot_grid(cowplot::get_legend(p1), ., rel_heights = c(0.1, 1), ncol = 1)
+
+
+ggsave("figures/supp-AUC-corr.pdf", scale = 1/90, width = 1558, height = 737)
+
+with(results3_corr, cor(AUC, percCases10))
+with(results3_corr, cor(AUC, percCases20))
+```
+
+### 6000 in training & all chromosomes
+
+```{r}
+results3.summary <- results3 %>%
+  group_by_at(c(vars(starts_with("par")), "method")) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+  print(n = Inf)
+```
+
+```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+results3.summary %>%
+  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  barplot_causal_one(h2 = 0.8)
+
+ggsave("figures/main-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
+```
+
+```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+results3.summary %>%
+  filter(grepl("PRS", method)) %>%
+  barplot_causal_one(h2 = 0.8)
+
+ggsave("figures/main-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
+```
+
+```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+results3.summary %>%
+  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  barplot_causal_one(h2 = 0.5)
+
+ggsave("figures/supp-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
+```
+
+```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+results3.summary %>%
+  filter(grepl("PRS", method)) %>%
+  barplot_causal_one(h2 = 0.5)
+
+ggsave("figures/supp-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
+```
+
+### 6000 in training & only chromosome 6
+
+```{r}
+results4 <- list.files("results4", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+
+results4 %>%
+  group_by_at(c(vars(starts_with("par")), "method")) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+  print(n = Inf)
+
+results34 <- rbind(
+  cbind(simu = "all", results3),
+  cbind(simu = "chr6", results4)
+) %>%
+  as_tibble()
+```
+
+```{r, fig.asp = 1, out.width = "90%"}
+results34 %>%
+  myggplot() +
+  geom_hline(yintercept = 0.5, linetype = 2) +
+  geom_hline(aes(yintercept = auc_max), linetype = 3, color = "blue",
+             data = data.frame(par.h2 = c(0.5, 0.8), auc_max = c(0.84, 0.94))) +
+  geom_boxplot(aes(method, AUC, fill = simu, color = simu), alpha = 0.3) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_grid(par.model ~ par.causal) +
+  facet_grid(par.h2 + par.dist ~ par.causal) +
+  scale_fill_brewer(type = "qual", palette = 2) +
+  scale_color_brewer(type = "qual", palette = 2) + 
+  labs(x = "Method")
+
+ggsave("figures/supp-AUC-chr6.pdf", scale = 1/90, width = 1153, height = 908)
+```
+
+### Varying training size & all shromosomes
+
+```{r}
+results5 <- list.files("results5", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+
+results5.summary <- results5 %>%
+  group_by_at(c(vars(starts_with("par")), "method", "n.train")) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+  print(n = Inf)
+
+results35.summary <- results3.summary %>%
+  filter(par.causal == "300 in all") %>%
+  cbind.data.frame(n.train = 6000) %>%
+  bind_rows(results5.summary)
+```
+
+```{r}
+myggplot(results35.summary, aes(n.train, AUC_mean, color = method, linetype = method)) +
+  geom_hline(yintercept = 0.5, linetype = 2) +
+  geom_hline(aes(yintercept = auc_max), linetype = 3, color = "blue",
+             data = data.frame(par.h2 = c(0.5, 0.8), auc_max = c(0.84, 0.94))) +
+  geom_line(size = 1.5) +
+  geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, 
+                    ymax = AUC_mean + 2 * AUC_boot), 
+                size = 1.5, width = 0) +
+  facet_grid(par.h2 ~ par.dist) +
+  scale_x_continuous(breaks = 1:6 * 1000, minor_breaks = NULL) + 
+  scale_y_continuous(minor_breaks = 0:20 / 20) +
+  scale_color_manual(values = methods.color) +
+  labs(x = "Size of the training set", y = "Mean of 100 AUCs", 
+       color = "Method", linetype = "Method") +
+  theme(legend.key.width = unit(3, "line"))
+
+ggsave("figures/main-AUC-ntrain.pdf", scale = 1/90, width = 1050, height = 800)
+```
+
