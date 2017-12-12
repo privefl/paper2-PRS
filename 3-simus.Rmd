@@ -336,7 +336,7 @@ params.grid3 <- expand.grid(
 ) 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 if (!dir.exists("results3")) dir.create("results3")
 
 for (i in rows_along(params.grid3)) {
@@ -386,7 +386,7 @@ params.grid4 <- expand.grid(
 ) 
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 if (!dir.exists("results4")) dir.create("results4")
 
 G6 <- big_copy(G, ind.col = which(CHR == 6))

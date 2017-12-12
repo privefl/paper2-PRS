@@ -136,6 +136,8 @@ $(document).ready(function () {
 </ol>
 <div id="prs" class="section level3">
 <h3>PRS</h3>
+<pre class="r"><code>paste(sprintf(&quot;%.1e&quot;, 10^(-c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100))))), collapse = &quot;, &quot;)</code></pre>
+<pre><code>## [1] &quot;1.0e+00, 5.0e-08, 7.9e-01, 7.8e-01, 7.7e-01, 7.5e-01, 7.4e-01, 7.2e-01, 7.0e-01, 6.9e-01, 6.7e-01, 6.5e-01, 6.3e-01, 6.1e-01, 5.9e-01, 5.7e-01, 5.4e-01, 5.2e-01, 5.0e-01, 4.7e-01, 4.5e-01, 4.2e-01, 3.9e-01, 3.7e-01, 3.4e-01, 3.2e-01, 2.9e-01, 2.7e-01, 2.4e-01, 2.2e-01, 2.0e-01, 1.8e-01, 1.5e-01, 1.3e-01, 1.2e-01, 1.0e-01, 8.5e-02, 7.1e-02, 5.8e-02, 4.8e-02, 3.8e-02, 3.0e-02, 2.3e-02, 1.8e-02, 1.3e-02, 9.8e-03, 7.0e-03, 4.9e-03, 3.3e-03, 2.2e-03, 1.4e-03, 8.8e-04, 5.3e-04, 3.1e-04, 1.7e-04, 9.2e-05, 4.7e-05, 2.3e-05, 1.1e-05, 4.6e-06, 1.9e-06, 7.3e-07, 2.6e-07, 8.8e-08, 2.7e-08, 7.7e-09, 2.0e-09, 4.7e-10, 1.0e-10, 1.9e-11, 3.2e-12, 4.7e-13, 6.0e-14, 6.7e-15, 6.3e-16, 5.0e-17, 3.3e-18, 1.8e-19, 8.1e-21, 2.9e-22, 7.9e-24, 1.7e-25, 2.7e-27, 3.3e-29, 2.9e-31, 1.8e-33, 7.7e-36, 2.2e-38, 4.3e-41, 5.2e-44, 3.8e-47, 1.7e-50, 4.3e-54, 6.0e-58, 4.4e-62, 1.6e-66, 2.8e-71, 2.3e-76, 7.7e-82, 1.1e-87, 5.5e-94, 1.0e-100&quot;</code></pre>
 <pre class="r"><code>PRS &lt;- function(G, infos.chr, infos.pos, 
                 pheno.all, covar.all, 
                 ind.train, ind.test) {
@@ -275,7 +277,11 @@ POS &lt;- celiac2$map$physical.pos
 <pre><code>## A Filebacked Big Matrix of type 'code 256' with 7102 rows and 281122 columns.</code></pre>
 <pre class="r"><code>(G2 &lt;- big_attach(&quot;backingfiles/celiacQC_sub1_tripled1.rds&quot;))</code></pre>
 <pre><code>## A Filebacked Big Matrix of type 'code 256' with 7102 rows and 843366 columns.</code></pre>
-<pre class="r"><code>covar.all &lt;- readRDS(&quot;backingfiles/PCA2.rds&quot;)$u</code></pre>
+<pre class="r"><code>covar.all &lt;- readRDS(&quot;backingfiles/PCA2.rds&quot;)$u
+
+n &lt;- nrow(G)
+n.train &lt;- 6e3
+ind.HLA &lt;- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == &quot;hild12&quot;))</code></pre>
 </div>
 <div id="simulation-of-phenotypes" class="section level3">
 <h3>Simulation of phenotypes</h3>
@@ -320,25 +326,24 @@ POS &lt;- celiac2$map$physical.pos
   pheno &lt;- as.numeric(y.simu &gt; qnorm(1 - K))
 }</code></pre>
 </div>
-<div id="simulations-1" class="section level3">
-<h3>Simulations</h3>
-<pre class="r"><code>n &lt;- nrow(G)
-n.train &lt;- 6e3
-ind.HLA &lt;- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == &quot;hild12&quot;))</code></pre>
-<pre class="r"><code>params.grid &lt;- expand.grid(
+<div id="simulations-n1-with-t-trees" class="section level3">
+<h3>Simulations n°1 (with T-Trees)</h3>
+<pre class="r"><code>params.grid1 &lt;- expand.grid(
   par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
   par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
-  par.h2     = c(0.5, 0.8), 
+  par.h2     = 0.8, 
   par.model  = c(&quot;simple&quot;, &quot;fancy&quot;),
-  num.simu   = 1:100,
+  num.simu   = 1:5,
   stringsAsFactors = FALSE
 ) </code></pre>
-<pre class="r"><code>for (i in rows_along(params.grid)) {
+<pre class="r"><code>if (!dir.exists(&quot;results1&quot;)) dir.create(&quot;results1&quot;)
+
+for (i in rows_along(params.grid1)) {
   
   res.file &lt;- paste0(&quot;results1/simu_&quot;, i, &quot;.rds&quot;)
   if (file.exists(res.file)) next
   
-  params &lt;- params.grid[i, ]
+  params &lt;- params.grid1[i, ]
   par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
   
   # Simulate phenotypes
@@ -363,20 +368,191 @@ ind.HLA &lt;- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == &quot;hild12&quot;)
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, &quot;logit-triple&quot;),
     ttrees(TTree, &quot;backingfiles/ttrees&quot;, pheno.all, ind.train, ind.test, n.trees = 100)
   )
-  print(res)
   params[[&quot;res&quot;]] &lt;- list(res)
-  saveRDS(unnest(param1, res), file = res.file)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }</code></pre>
-<pre><code>## # A tibble: 6 x 4
-##          method                     eval   timing nb.preds
-##           &lt;chr&gt;                   &lt;list&gt;    &lt;dbl&gt;    &lt;int&gt;
-## 1       PRS-all        &lt;dbl [1,102 x 2]&gt;    7.109    95426
-## 2 PRS-stringent        &lt;dbl [1,102 x 2]&gt;    7.109       22
-## 3       PRS-max        &lt;dbl [1,102 x 2]&gt;    7.109       14
-## 4  logit-simple        &lt;dbl [1,102 x 2]&gt;  540.618      949
-## 5  logit-triple        &lt;dbl [1,102 x 2]&gt; 1447.478     1001
-## 6       T-Trees &lt;data.frame [1,102 x 2]&gt; 4061.206    15293</code></pre>
-<pre><code>## Error in unnest(param1, res): objet 'param1' introuvable</code></pre>
+</div>
+<div id="simulations-n2-without-t-trees-with-logit-triple" class="section level3">
+<h3>Simulations n°2 (without T-Trees, with logit-triple)</h3>
+<pre class="r"><code>params.grid2 &lt;- expand.grid(
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c(&quot;simple&quot;, &quot;fancy&quot;),
+  num.simu   = 1:20,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results2&quot;)) dir.create(&quot;results2&quot;)
+
+for (i in rows_along(params.grid2)) {
+  
+  res.file &lt;- paste0(&quot;results2/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid2[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = n.train))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, &quot;logit-triple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="simulations-n3-without-logit-triple" class="section level3">
+<h3>Simulations n°3 (without logit-triple)</h3>
+<pre class="r"><code>params.grid3 &lt;- expand.grid(
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c(&quot;simple&quot;),
+  num.simu   = 21:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results3&quot;)) dir.create(&quot;results3&quot;)
+
+for (i in rows_along(params.grid3)) {
+  
+  res.file &lt;- paste0(&quot;results3/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid3[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = n.train))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="simulations-n4-dataset-with-only-chromosome-6" class="section level3">
+<h3>Simulations n°4 (dataset with only chromosome 6)</h3>
+<pre class="r"><code>params.grid4 &lt;- expand.grid(
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c(&quot;simple&quot;),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results4&quot;)) dir.create(&quot;results4&quot;)
+
+G6 &lt;- big_copy(G, ind.col = which(CHR == 6))
+ind.HLA6 &lt;- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], 
+                         subset(LD.wiki34, ID == &quot;hild12&quot;))
+
+for (i in rows_along(params.grid4)) {
+  
+  res.file &lt;- paste0(&quot;results4/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid4[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G6,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G6), ind.HLA6),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = n.train))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G6, CHR[CHR == 6], POS[CHR == 6], pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G6, pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="simulations-n5-varying-training-size" class="section level3">
+<h3>Simulations n°5 (varying training size)</h3>
+<pre class="r"><code>params.grid5 &lt;- expand.grid(
+  n.train    = 1:5 * 1000,
+  par.causal = list(c(300, &quot;all&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.5, 0.8), 
+  par.model  = c(&quot;simple&quot;),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results5&quot;)) dir.create(&quot;results5&quot;)
+
+for (i in rows_along(params.grid5)) {
+  
+  res.file &lt;- paste0(&quot;results5/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid5[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = params[[&quot;n.train&quot;]]))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
 </div>
 </div>
 
