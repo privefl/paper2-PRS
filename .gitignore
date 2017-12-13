@@ -7,6 +7,14 @@ results2
 results3
 results4
 results5
+draft.bbl
+draft.blg
+draft.dvi
+draft.log
+draft.out
+draft.pdf
+draft.synctex.gz
+draft.aux
 # History files
 .Rhistory
 .Rapp.history

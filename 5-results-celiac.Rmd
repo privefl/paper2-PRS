@@ -6,9 +6,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
-                      fig.asp = 0.7, error = TRUE)
-options(width = 85)
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.width = 10,
+                      fig.asp = 0.7, dev = "svg")
+options(width = 95)
 ```
 
 ```{r}
@@ -22,6 +22,7 @@ myggplot <- function(..., coeff = 1) {
 
 ```{r}
 # Read file, see "Preprocessing" notebook
+library(bigsnpr)
 celiac <- snp_attach("backingfiles/celiacQC.rds")
 G <- celiac$genotypes
 CHR <- celiac$map$chromosome
@@ -56,19 +57,19 @@ gwas.train <- big_univLogReg(
 gwas.train.gc <- snp_gc(gwas.train)
 ```
 
-```{r}
+```{r, dev="png"}
 labels <- 1:22; labels[c(11, 13, 15, 17, 18, 20, 21)] <- ""
 cowplot::plot_grid(
   snp_manhattan(gwas.train.gc, CHR, POS, labels = labels),
   snp_manhattan(gwas.train.gc, CHR, POS, labels = labels) +
-    coord_cartesian(ylim = c(0, 30)) + 
+    coord_cartesian(ylim = c(0, 25)) + 
     geom_hline(yintercept = -log10(5e-8), color = "red", linetype = 3),
   align = "hv", ncol = 1, labels = LETTERS[1:2], label_size = 25, scale = 0.95
 )
 ```
 
 ```{r}
-ggsave("figures/celiac-man.png", scale = 1/90, width = 1400, height = 1000)
+ggsave("figures/supp-celiac-man.png", scale = 1/90, width = 1300, height = 1000)
 ```
 
 ```{r}
@@ -111,7 +112,7 @@ nb.pred1 <- colSums(logit$beta != 0)
 aucs1 <- apply(preds1, 2, AUC, target = y[ind.test])
 ```
 
-Cross-Model Selection and Averaging:
+Cross-Model Selection and Averaging (CMSA):
 
 ```{r}
 system.time({
@@ -143,7 +144,7 @@ nb.pred2 <- colSums(logit2$beta != 0)
 aucs2 <- apply(preds3, 2, AUC, target = y[ind.test])
 ```
 
-Cross-Model Selection and Averaging:
+Cross-Model Selection and Averaging (CMSA):
 
 ```{r}
 system.time({
@@ -180,5 +181,5 @@ p +
 
 
 ```{r}
-ggsave("figures/celiac-regpath.pdf", scale = 1/90, width = 1000, height = 700)
+ggsave("figures/main-celiac-regpath.pdf", scale = 1/90, width = 1000, height = 700)
 ```
