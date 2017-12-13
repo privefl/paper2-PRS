@@ -229,7 +229,7 @@ results3_corr <- results3 %>%
   )
 ```
 
-```{r, fig.asp=0.5, out.width="90%", fig.width=15}
+```{r, fig.asp=0.5, out.width="95%", fig.width=16}
 p1 <- results3_corr %>%
   myggplot(aes(AUC, percCases10, color = Parameters)) + 
   geom_point(size = 0.6, alpha = 0.5) +
@@ -250,7 +250,9 @@ cowplot::plot_grid(p1 + theme(legend.position = "none"), p2 ,
 
 
 ggsave("figures/supp-AUC-corr.pdf", scale = 1/90, width = 1558, height = 737)
+```
 
+```{r}
 with(results3_corr, cor(AUC, percCases10))
 with(results3_corr, cor(AUC, percCases20))
 ```
