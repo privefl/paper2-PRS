@@ -47,10 +47,10 @@ get_oracle(G, 0.8, 3000, effects.dist = "gaussian", model = "simple")
 
 params.grid2 <- expand.grid(
   par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
-  par.dist   = "gaussian", 
-  par.h2     = 0.8, 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.5, 0.8), 
   par.model  = c("simple", "fancy"),
-  num.simu   = 1:50,
+  num.simu   = 1:100,
   stringsAsFactors = FALSE
 ) 
 
@@ -81,4 +81,5 @@ oracles2 %>%
     par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
                         levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
   group_by(par.causal, par.dist, par.h2, par.model) %>%
-  summarise(AUC = mean(AUC))
+  summarise(AUC_mean = round(mean(AUC), 3),
+            AUC_mean_boot = boot(AUC, 1e4, mean))
