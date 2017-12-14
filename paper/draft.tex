@@ -182,23 +182,9 @@ All the code used in this paper along with results such as figures and tables, a
 
 \section{Results}
 
-
-[MONTRER UN MANHATTAN PLOT POUR JUSTIFIER 30 IN HLA]
-
-[MONTRER UN GRAPH EN FCT D'INCLUSION]
-
-
-
 \subsection{Overview and naming}
 
 In results, we use estimates of maximum achievable AUC values for the simulations: 84\% (respectively 94\%) for heritabilities of 50\% (respectively 80\%).
-
-\subsection{T-Trees}
-
-First, we ran only 5 simulations for each combination of parameters), excepted for the heritability that we fixed at $0.8$ (see section \ref{sec:simus}).
-The goal was to quickly discard the T-Trees method as being competitive with the other methods. 
-For example, compared to our penalized logistic regression, T-Trees perform worse for both predictive measures, the AUC and the percentage of cases in highest scores (Figure \ref{fig:ttrees}). Moreover, T-Trees takes longer to run and makes more complex predictive models because it uses more SNPs in the models and has non-linear effects (Figure \ref{fig:ttrees}).
-So, we decided to discard this method for the rest of the simulations.
 
 \subsection{Scenario \textnumero1}
 
@@ -210,41 +196,54 @@ In the case where there are correlation between predictors (i.e.\ when we simula
 
 \subsection{Main simulations}
 
-Main simulations corresponds to scenarios 3 to 5 (Table \ref{tab:simus}). They mainly compare our ``simple'' logistic regression to the standard P+T methods in case of a ``simple'' model (only linear effects).
+Main simulations corresponds to scenario \textnumero3 (Table \ref{tab:simus}). They mainly compare our ``simple'' logistic regression to the standard P+T methods in case of a ``simple'' model (only linear effects).
 
-Using the penalized logistic regression, we report AUCs greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, which is not obtained by the upper bound of the P+T method in any scenario (Figure \ref{fig:main-AUC-logit}). Our penalized regression methods consistently provides better predictive performance than the P+T method for all disease architectures tested, excepted sometimes when we simulate 3000 causals SNPs anywhere on the genome, a case where all methods rarely exceeds 65\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
+Using the penalized logistic regression, we report AUCs greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, which is not obtained by the upper bound of the P+T method in any scenario (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). Our penalized regression methods consistently provides better predictive performance than the P+T method for all disease architectures tested, excepted sometimes when we simulate 3000 causals SNPs anywhere on the genome, a case where all methods rarely exceeds 65\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). We also report that the choice of the threshold of inclusion of SNPs in the P+T method can greatly impact its performance, for example dropping from an AUC of 90\% to less than 60\% when including all SNPs passing clumping in a model with only 30 causal SNPs, or dropping from 60\% to a random predictor (50\% of AUC) when including only GWAS-significant SNPs in a model with 3000 causal SNPs (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}). 
+
+\subsection{Simulations varying number of SNPs and training size}
+
+These simulations corresponds to scenarios \textnumero4 and \textnumero5. First, when reproducing simulations of scenario \textnumero3 on only the chromosome 6, methods globally increase or ..stagnate.. in predictive performance (Figure \ref{fig:supp-AUC-chr6}). There is particularly high increase in the case when simulating 3000 causal SNPs anywhere on the dataset, for example, the ``logit-simple'' can increase from less than 60\% of AUC to nearly 80\%. On the contrary, when simulating only 30 causal SNPs on the corresponding dataset, AUC of the ``PRS-max'' seems to slightly decrease. Secondly, when varying the training size, we report an increase of AUC whith training size, with the AUC of the ``logit-simple'' method increasing faster than the ``PRS-max'' (Figure \ref{fig:main-AUC-ntrain}).
+
+\subsection{``Fancy'' methods and model}
+
+First, in scenario \textnumero1 we also tested the T-Trees method. 
+For example, compared to our penalized logistic regression, T-Trees perform worse in term predictive measures, while taking longer to run and making more complex predictive models because it uses more SNPs in the models and has non-linear effects (Figure \ref{fig:supp-ttrees}). Even when simulating a fancy model in which there is dominant and interaction effects that decision trees based methods should handle, AUC is still worse than the ``logit-simple''.
+Secondly, as for the comparison between our two penalized logistic regression in scenario \textnumero2, the classic one (called ``simple'') and the one using additional features coding for recessive and dominant effects (called ``triple''), we report that the ``triple'' method is nearly as good as the ``simple'' one when there are only linear effects and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). Yet, the ``triple'' solution takes approximately 3 more times to run.
+Thirdly, for other simpler methods, we report the exact same results that is to say that the ``logit-simple'' give better AUCs than the ``PRS-max'', excepted in the case of 3000 causal SNP anywhere on the genome, where no method exceed 60\% of AUC (Figure \ref{fig:supp-AUC-logit-fancy}). Moreover, the choice of the threshold inclusion of SNPs still greatly affect the performance of the P+T method (Figure \ref{fig:supp-AUC-PRS-fancy}).
+
+\subsection{Other measures of performance}
+
+Our method is parallelized and requires only approximately 500 seconds to run (with 6 physical cores) for a training size of 6000 individuals. It takes 1000 seconds to train on 12,000 individuals. Moreover, when there are 3 times more variables, it takes approximately 3 more times to run. We can confidently say that the ``logit-simple'' is of linear complexity in both dimensions.
+Moreover, the ``logit-simple'' results in relatively sparse models with no more than 14,000 predictors entering the models even for the linear model of 3000 causal SNPs (Figure \ref{fig:supp-triple}). The ``logit-triple'' is comparable in terms of number of predictors.
+Finally, for other predictive performance measures, the percentage of cases in either the 10\% or 20\% largest PRSs, we report that their values are correlated to the values of AUCs at more than 98\%, which is why we don't speak about them more in the results (Figure \ref{fig:supp-AUC-corr}).
+
+\subsection{Real data results}
+
+[MONTRER UN MANHATTAN PLOT POUR JUSTIFIER 30 IN HLA]
+
+[MONTRER UN GRAPH EN FCT D'INCLUSION]
+
+We also the whole Celiac dataset with the original real phenotypes. For one run, splitting the dataset in 12,000 indiduals in the training set and the remaining 3155 individuals in the test set, we compare the ``regularization paths'' of all methods (T-Trees excepted), that is to say the predictive performance as a function of the number of predictors corresponding to different inclusion thresholds of the methods.
 
 
 
 
-
-Our method is parallelized and requires only less than 10 minutes to run (with 6 physical cores) [TABLE ?FIGURE?]. Moreover, it results in relatively sparse models with no more than 14,000 predictors entering the models even for the linear model of 3000 causal SNPs [TABLE ?FIGURE?].
-
-First, we show that AUC is highly correlated ($r^2 > 95\%$) with the percentage of cases in either the 10\% or 20\% largest PRSs (Figure \ref{fig:AUC-corr}). Therefore, AUC can be a good measure at determining whether a score can identify high-risk individuals or not, so we report only predictive performance in terms of AUC in the following results.
-
-
-P+T runs in only a few seconds because we don't consider the GWAS computation as part of the execution time of the method because this is generally executed by others (e.g.\ consortia) and then only the resulting summary statistics are used to construct a PRS. 
-
-As for the comparison between our two penalized logistic regression, the classic one (called ``simple'') and the one using additional features coding for recessive and dominant effects (called ``triple''), we report that the ``triple'' method is nearly as good as the ``simple'' one when there are only linear effects and can lead to significantly greater results when there are also dominant and interactions effects (Figure \ref{fig:AUC-rel}). Yet, the ``triple'' solution takes approximately 3 more times to run.
-
-As for general results, we report a decrease of AUC when the number of causal variants $M$ is increasing [BATEAU? quoi d'autre?].
-
-[TROUVER DES AUTRES: \% of decrease for h2 0.8 -> 0.5? Pas bon d'utliser tous les SNPs]
-
-\subsection{Simulations varying training size and number of SNPs}
 
 \section{Discussion}
 
-In this comparative study, we proposed other methods as a replacement to the widely used P+T method. 
+In this comparative study, we propose other methods as a replacement to the widely used P+T method. 
 We show that jointly estimating the SNP effects using efficient penalized logistic regressions enable to achieve really good performance, as reported in a previous study \cite[]{abraham2013performance}, higher than with the P+T method.
 We are well aware that the P+T method is widely used because it is simple and can use summary statistics already learned from large genotype data, which is not the case for our penalized logistic regressions. 
 Yet, in the case of prediction of disease to be used for clinical interventions, best possible methods should be used, even if it has to be used by large consortia only [EVEN LARGE CONSORTIA DON'T HAVE ALL DATA?].
 
 One does not simply identify high-risk individuals (Figure \ref{fig:meme}).
 
+[DISCUSSION]As for the P+T method itself, we recall that we report the maximum AUCs of 102 thresholds, a threshold that should normally be learned on the training set only. The choice of this threshold is very important as it can greatly impact the 
 
 [PARLER DU PROBLEME DE POP? + future paper]
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 \begin{table}[htbp]
@@ -285,19 +284,22 @@ scenario & & training set & (number and location) & of effects & & model & simul
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-logit}}
-\caption{Scenario \textnumero3. Mean of AUC over 100 simulations for our penalized logistic regression (``logit-simple'') and the maximum AUC reported with the P+T method (``PRS-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:main-AUC-logit}
+\caption{Scenario \textnumero3. Mean of AUC over 100 simulations for our penalized logistic regression (``logit-simple'') and the maximum AUC reported with the P+T method (``PRS-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}
+\label{fig:main-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-PRS}}
-\caption{Scenario \textnumero3. Mean of AUC over 100 simulations for ..the three reported PRSs... Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:main-AUC-PRS}
+\caption{Scenario \textnumero3. Mean of AUC over 100 simulations for ..the three reported PRSs... Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}
+\label{fig:main-AUC-PRS}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-ntrain}}
-\caption{Scenario \textnumero5. Mean of AUC over 100 simulations for ..the three reported PRSs... and the simple logistic regression as a function of the training size. This results are for an additive model with 300 causal SNPs sampled anywhere on the genome. Upper (lower) panels are presenting results for an heritability of 0.5 (0.8) and left (right) panels are presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:main-AUC-ntrain}
+\caption{Scenario \textnumero5. Mean of AUC over 100 simulations for ..the three reported PRSs... and the simple logistic regression as a function of the training size. This results are for an additive model with 300 causal SNPs sampled anywhere on the genome. Upper (lower) panels are presenting results for an heritability of 0.5 (0.8) and left (right) panels are presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}
+\label{fig:main-AUC-ntrain}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -380,26 +382,26 @@ Total & 10061 & 2436 & 1623 & 1035 & 15155\\
 
 \newpage
 \begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-AUC-chr6}}
+\caption{Scenario \textnumero4. Boxplots of AUC over 100 simulations for ..the three reported PRSs... and the simple logistic regression.
+Vertical panels represents different number of causal SNPs and their location (``all'': anywhere on the genome; ``HLA'': only in the HLA region). Horizontal panels are presenting results for effets following a Gaussian or Laplace distribution and an heritability of 0.5 or 0.8. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}
+\label{fig:supp-AUC-chr6}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-logit}}
-\caption{[COPY FOR H2=0.5]}\label{fig:supp-AUC-logit}
+\caption{[COPY FOR H2=0.5]}
+\label{fig:supp-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-PRS}}
-\caption{[COPY FOR H2=0.5]}\label{fig:supp-AUC-PRS}
-\end{figure}
-
-\newpage
-\begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{supp-AUC-logit-fancy}}
-\caption{[COPY FOR H2=0.5 \& MODEL FANCY]}\label{fig:supp-AUC-logit-fancy}
-\end{figure}
-
-\newpage
-\begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{supp-AUC-PRS-fancy}}
-\caption{[COPY FOR H2=0.5 \& MODEL FANCY]}\label{fig:supp-AUC-PRS-fancy}
+\caption{[COPY FOR H2=0.5]}
+\label{fig:supp-AUC-PRS}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -407,37 +409,46 @@ Total & 10061 & 2436 & 1623 & 1035 & 15155\\
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-ttrees}}
-\caption{[T-TREES 3 PLOTS - H2=0.8]}\label{fig:supp-ttrees}
+\caption{[T-TREES 3 PLOTS - H2=0.8]}
+\label{fig:supp-ttrees}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-triple}}
-\caption{[TRIPLE 3 PLOTS - H2=0.8]}\label{fig:supp-triple}
+\caption{[TRIPLE 3 PLOTS - H2=0.8]}
+\label{fig:supp-triple}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-triple}}
-\caption{[TRIPLE ONLY AUC - H2=0.5]}\label{fig:supp-AUC-triple}
+\caption{[TRIPLE ONLY AUC - H2=0.5]}
+\label{fig:supp-AUC-triple}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-AUC-logit-fancy}}
+\caption{[COPY FOR H2=0.5 \& MODEL FANCY]}
+\label{fig:supp-AUC-logit-fancy}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-AUC-PRS-fancy}}
+\caption{[COPY FOR H2=0.5 \& MODEL FANCY]}
+\label{fig:supp-AUC-PRS-fancy}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 \begin{figure}[h]
-\centerline{\includegraphics[width=\textwidth]{supp-AUC-chr6}}
-\caption{Scenario \textnumero4. Boxplots of AUC over 100 simulations for ..the three reported PRSs... and the simple logistic regression.
-Vertical panels represents different number of causal SNPs and their location (``all'': anywhere on the genome; ``HLA'': only in the HLA region). Horizontal panels are presenting results for effets following a Gaussian or Laplace distribution and an heritability of 0.5 or 0.8. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}\label{fig:supp-AUC-chr6}
-\end{figure}
-
-\newpage
-\begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-corr}}
-\caption{Scenario \textnumero3. Comparison of different predictive measures. Correlation is greater than 98\%.[ADD]}\label{fig:supp-AUC-corr}
+\caption{Scenario \textnumero3. Comparison of different predictive measures. Correlation is greater than 98\%.[ADD]}
+\label{fig:supp-AUC-corr}
 \end{figure}
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
