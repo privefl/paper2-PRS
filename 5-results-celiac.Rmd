@@ -12,7 +12,7 @@ options(width = 95)
 ```
 
 ```{r}
-library(ggplot2)
+library(tidyverse)
 myggplot <- function(..., coeff = 1) {
   bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
 } 
@@ -54,6 +54,8 @@ gwas.train <- big_univLogReg(
   covar.train = obj.svd$u[ind.train, , drop = FALSE], 
   ncores = NCORES
 )
+snp_qq(gwas.train) +
+  coord_cartesian(ylim = c(0, 25))
 gwas.train.gc <- snp_gc(gwas.train)
 ```
 
@@ -66,10 +68,6 @@ cowplot::plot_grid(
     geom_hline(yintercept = -log10(5e-8), color = "red", linetype = 3),
   align = "hv", ncol = 1, labels = LETTERS[1:2], label_size = 25, scale = 0.95
 )
-```
-
-```{r}
-ggsave("figures/supp-celiac-man.png", scale = 1/90, width = 1300, height = 1000)
 ```
 
 ```{r}
@@ -183,3 +181,129 @@ p +
 ```{r}
 ggsave("figures/main-celiac-regpath.pdf", scale = 1/90, width = 1000, height = 700)
 ```
+
+### ROC Curves
+
+```{r, fig.asp=1, fig.width=8}
+library(plotROC)
+scores_tidy <- tibble(
+  d = y[ind.test], 
+  "PRS-max" =  prs[, which.max(aucs)],
+  "logit-simple" = preds2,
+  "logit-triple" = preds4
+) %>%
+  gather(key = "Method", value = "Score", -d)
+  
+bigstatsr:::MY_THEME(
+  ggplot(scores_tidy, aes(d = d, m = Score, color = Method, linetype = Method)) +
+    style_roc(xlab = "1 - Specificity", ylab = "Sensitivity")
+) +
+  geom_roc(n.cuts = 0, size = 2) +
+  theme(legend.position = c(0.7, 0.3), legend.key.width = unit(4, "line")) +
+  coord_equal()
+```
+
+```{r}
+ggsave("figures/supp-celiac-roc.pdf", scale = 1/90, width = 700, height = 700)
+```
+
+## Top scores
+
+First, we get the SNP with the highest ratio of cases over controls for homozygous-recessive individuals.
+
+```{r}
+props <- sapply(cols_along(G), function(j) {
+  ccoj <- counts.control[, j]
+  mut <- `if`(ccoj[1] < ccoj[3], 1, 3)
+  `if`(counts.case[mut, j] > 100, counts.case[mut, j] / ccoj[mut], 0)
+})
+theone <- which.max(props)
+table(Geno = G[, theone], forcats::fct_recode(as.factor(y), Control = "0", Case = "1"))
+```
+
+```{r}
+# one geno
+ind0 <- which(G[ind.test, theone] == 0)
+(M <- length(ind0))
+mean(y[ind.test[ind0]]) 
+# prs max
+indPRS <- order(prs[, which.max(aucs)], decreasing = TRUE)[1:M]
+mean(y[ind.test[indPRS]])
+# logit-simple (CMSA)
+indLS <- order(preds2, decreasing = TRUE)[1:M]
+mean(y[ind.test[indLS]])
+# logit-triple (CMSA)
+indLT <- order(preds4, decreasing = TRUE)[1:M]
+mean(y[ind.test[indLT]])
+```
+
+## Stability of selection of the "logit-simple"
+
+Train on 100 bootstrap samples of the Celiac dataset.
+
+```{r, eval=FALSE}
+if (!dir.exists("results6")) dir.create("results6")
+
+for (i in seq_len(100)) {
+  
+  res.file <- paste0("results6/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  ind.train <- sort(sample(nrow(G)))
+  
+  cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
+                         X = G, y.train = y[ind.train], 
+                         ind.train = ind.train, 
+                         covar.train = obj.svd$u[ind.train, ],
+                         alpha = 0.5, dfmax = 20e3, 
+                         ncores = NCORES)
+  
+  saveRDS(cmsa.logit[cols_along(G)], file = res.file)
+}
+```
+
+```{r}
+results6 <- list.files("results6", full.names = TRUE) %>%
+  map(~readRDS(.x)) %>%
+  do.call("cbind", .)
+```
+
+```{r}
+n_enter <- rowSums(results6 != 0)
+mean(n_enter == 0)                ## Proportion of SNPs never entering
+n_enter_once <- n_enter[n_enter != 0]
+mean(n_enter_once)                ## Mean number of times a SNPs enter 
+                                  ## if entering at least once
+bigstatsr:::MY_THEME(
+  qplot(n_enter_once, geom = "bar") +
+    labs(x = "Number of times")
+)
+```
+
+```{r}
+ggsave("figures/supp-celiac-stabilitybar.pdf", scale = 1/90, width = 1000, height = 700)
+```
+
+```{r}
+length(always_enter <- which(n_enter == ncol(results6)))
+cowplot::plot_grid(
+  snp_manhattan(gwas.train.gc, CHR, POS, labels = labels, 
+                ind.highlight = always_enter),
+  snp_manhattan(gwas.train.gc, CHR, POS, labels = labels, 
+                ind.highlight = always_enter) +
+    coord_cartesian(ylim = c(0, 25)) + 
+    geom_hline(yintercept = -log10(5e-8), color = "red", linetype = 3),
+  align = "hv", ncol = 1, labels = LETTERS[1:2], label_size = 25, scale = 0.95
+)
+```
+
+```{r}
+ggsave("figures/supp-celiac-man-col.png", scale = 1/90, width = 1300, height = 1000)
+```
+
+```{r}
+sq_effects_always <- colSums((results6[always_enter, ])^2)
+sq_effects_others <- colSums((results6[-always_enter, ])^2)
+summary(100 * sq_effects_always / (sq_effects_always + sq_effects_others))
+```
+

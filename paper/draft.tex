@@ -221,12 +221,10 @@ Finally, for other predictive performance measures, the percentage of cases in e
 
 [MONTRER UN MANHATTAN PLOT POUR JUSTIFIER 30 IN HLA]
 
-[MONTRER UN GRAPH EN FCT D'INCLUSION]
+We also analyze the whole Celiac dataset with the original real phenotypes. For one run, splitting the dataset in 12,000 indiduals in the training set and the remaining 3155 individuals in the test set, we compare the ``regularization paths'' of all methods (T-Trees excepted), that is to say the predictive performance as a function of the number of predictors corresponding to different inclusion thresholds of the methods. 
+We show that the regularization paths of both logistic regressions are both very smooth, reaching a maximum AUC or more than 89\% at approximately 1000 predictors (Figure \ref{fig:main-celiac-regpath}). Moreover, the CMSA procedure give AUC very close to the maximum AUC of the regularization path. For the P+T method, on the contrary, the regularization path is not smooth at all and the AUC never exceed the AUC given by the most stringent threshold [ADD VALUE OF AUC] ($p < 10^{-100}$). We also show some associated ROC curves [QUOI DIRE DE CES ROC?] (Figure \ref{fig:supp-celiac-roc}).
 
-We also the whole Celiac dataset with the original real phenotypes. For one run, splitting the dataset in 12,000 indiduals in the training set and the remaining 3155 individuals in the test set, we compare the ``regularization paths'' of all methods (T-Trees excepted), that is to say the predictive performance as a function of the number of predictors corresponding to different inclusion thresholds of the methods.
-
-
-
+Then, we investigate the stability of SNP selection of the ``logit-simple''. For that, we ..replicate.. 100 times the following procedure: we sample with replacement all individuals and train the ``logit-simple'' and report the effects of each SNPs (for which a lot are 0). Over these 100 replicates, [VAL]\% of the SNPs never enter the predictions and [VAL] enter all predictions (Figure \ref{fig:supp-celiac-stabilitybar}). If we compute the sum of squared scores of the SNPs that enter every model divided by the sum of all squared scores [HAS A NAME?], we end up with a ratio of more than 99\% for all predictions, showing that most of the predictive performance is in these SNPs always entering the models. Moreover, these selected SNPs correspond to peaks of the GWAS, but also to less significant SNPs (Figure \ref{fig:supp-celiac-man-col}).
 
 
 \section{Discussion}
@@ -300,6 +298,13 @@ scenario & & training set & (number and location) & of effects & & model & simul
 \centerline{\includegraphics[width=\textwidth]{main-AUC-ntrain}}
 \caption{Scenario \textnumero5. Mean of AUC over 100 simulations for ..the three reported PRSs... and the simple logistic regression as a function of the training size. This results are for an additive model with 300 causal SNPs sampled anywhere on the genome. Upper (lower) panels are presenting results for an heritability of 0.5 (0.8) and left (right) panels are presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. [MODEL AND H2]}
 \label{fig:main-AUC-ntrain}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{main-celiac-regpath}}
+\caption{``Regularization paths'' for the P+T, ``logit-simple'' and ``logit-triple'' methods for one run on the Celiac disease, training on 12,000 individuals and projecting on the remaining 3155 individuals. For the P+T method, the dotted line represents the maximum AUC while for the logistic regressions, the dotted lines represent the value using the CMSA procedure to be free of the choice of the threshold.}
+\label{fig:main-celiac-regpath}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -448,6 +453,29 @@ Vertical panels represents different number of causal SNPs and their location (`
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-corr}}
 \caption{Scenario \textnumero3. Comparison of different predictive measures. Correlation is greater than 98\%.[ADD]}
 \label{fig:supp-AUC-corr}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-celiac-roc}}
+\caption{ROC Curves for the P+T, ``logit-simple'' and ``logit-triple'' methods for one run on the Celiac disease, training on 12,000 individuals and projecting on the remaining 3155 individuals.}
+\label{fig:supp-celiac-roc}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-celiac-stabilitybar}}
+\caption{Barplot showing how many times SNPs enter the predictions among predictions for 100 samples with replacement of the Celiac dataset. The bar for $0$ is not displayed for sake of visibility.}
+\label{fig:supp-celiac-stabilitybar}
+\end{figure}
+
+\newpage
+\begin{figure}[h]
+\centerline{\includegraphics[width=\textwidth]{supp-celiac-man-col}}
+\caption{Manhattan plot of the Celiac dataset. Red points are presenting SNPs that are always selected in 100 replicates of [...].}
+\label{fig:supp-celiac-man-col}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

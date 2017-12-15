@@ -10,22 +10,22 @@ qplot(cmsa.logit[cols_along(G)], gwas.train.gc$estim,
 preds2
 
 
-obj.svd3 <- obj.svd
-obj.svd3$u[ind.train, ] <- NA
-plot(obj.svd3, type = "scores")
-
-
-preds.train <- predict(cmsa.logit, X = G, ind.row = ind.train, 
-                       covar.row = obj.svd$u[ind.train, ])
-myglm <- glm(y[ind.train] ~ preds.train, family = "binomial")
-summary(myglm)
-preds2.prob <- predict(myglm, newdata = data.frame(preds.train = preds2),
-                       type = "response")
-err <- rep(NA, nrow(G))
-err[ind.test] <- (y[ind.test] != (preds2.prob > 0.5)) # (y[ind.test] - preds2.prob)^2
-
-plot(obj.svd3, type = "scores") + 
-  aes(color = as.factor(err), alpha = I(rep(0.6, nrow(G))))
+# obj.svd3 <- obj.svd
+# obj.svd3$u[ind.train, ] <- NA
+# plot(obj.svd3, type = "scores")
+# 
+# 
+# preds.train <- predict(cmsa.logit, X = G, ind.row = ind.train, 
+#                        covar.row = obj.svd$u[ind.train, ])
+# myglm <- glm(y[ind.train] ~ preds.train, family = "binomial")
+# summary(myglm)
+# preds2.prob <- predict(myglm, newdata = data.frame(preds.train = preds2),
+#                        type = "response")
+# err <- rep(NA, nrow(G))
+# err[ind.test] <- (y[ind.test] != (preds2.prob > 0.5)) # (y[ind.test] - preds2.prob)^2
+# 
+# plot(obj.svd3, type = "scores") + 
+#   aes(color = as.factor(err), alpha = I(rep(0.6, nrow(G))))
 
 boot1000 <- function(x) {
   sd(replicate(1000, mean(sample(x, replace = TRUE))))
@@ -69,5 +69,3 @@ data.frame(pop = celiac$fam$family.ID[ind.test],
   labs(fill = "Pheno")
 
 
-qplot(preds2, obj.svd$u[ind.test, 1]) +
-  geom_smooth(method = "lm")
