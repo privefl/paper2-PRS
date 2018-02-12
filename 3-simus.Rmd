@@ -15,6 +15,7 @@ options(width = 85)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(glue)
 ```
 
 Each method's function returns a tibble (data frame) with 4 columns:
@@ -32,15 +33,15 @@ PRS <- function(G, infos.chr, infos.pos,
                 pheno.all, covar.all, 
                 ind.train, ind.test) {
   
-  # GWAS
-  gwas.train <- big_univLogReg(
-    G, pheno.all[ind.train], ind.train = ind.train, 
-    covar.train = covar.all[ind.train, , drop = FALSE], 
-    ncores = nb_cores()
-  )
-  gwas.train.gc <- snp_gc(gwas.train)
-  
   timing <- system.time({
+      
+    # GWAS
+    gwas.train <- big_univLogReg(
+      G, pheno.all[ind.train], ind.train = ind.train, 
+      covar.train = covar.all[ind.train, , drop = FALSE], 
+      ncores = nb_cores()
+    )
+    gwas.train.gc <- snp_gc(gwas.train)
     
     # Clumping on the test set
     ind.keep <- snp_clumping(G, infos.chr = infos.chr,
@@ -88,22 +89,22 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
   
   timing <- system.time({
     
-    cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
-                           X = G, y.train = pheno.all[ind.train], 
-                           ind.train = ind.train, 
-                           covar.train = covar.all[ind.train, , drop = FALSE],
-                           alpha = 0.5, dfmax = 20e3, 
-                           ncores = nb_cores())
+    cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
+                               ind.train = ind.train, 
+                               covar.train = covar.all[ind.train, , drop = FALSE],
+                               ncores = nb_cores())
     
-    preds <- predict(cmsa.logit, X = G, ind.row = ind.test, 
+    preds <- rowMeans(
+      predict(cmsa.logit, X = G, ind.row = ind.test, 
                      covar.row = covar.all[ind.test, , drop = FALSE])
+    )
   })[3]
   
   tibble(
     method   = method, 
     eval     = list(cbind(preds, pheno.all[ind.test])),
     timing   = timing,
-    nb.preds = sum(cmsa.logit != 0)
+    nb.preds = sum(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) > 0)
   )
 }
 ```
@@ -173,7 +174,6 @@ POS <- celiac2$map$physical.pos
 covar.all <- readRDS("backingfiles/PCA2.rds")$u
 
 n <- nrow(G)
-n.train <- 6e3
 ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
 ```
 
@@ -222,10 +222,11 @@ get_pheno <- function(
 }
 ```
 
-### Simulations n°1 (with T-Trees)
+### Scenario n°1 (with T-Trees)
 
 ```{r}
 params.grid1 <- expand.grid(
+  n.train    = 6000,
   par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = 0.8, 
@@ -235,7 +236,7 @@ params.grid1 <- expand.grid(
 ) 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 if (!dir.exists("results1")) dir.create("results1")
 
 for (i in rows_along(params.grid1)) {
@@ -258,7 +259,7 @@ for (i in rows_along(params.grid1)) {
   )
   
   # Split in training/test sets
-  ind.train <- sort(sample(n, size = n.train))
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
   ind.test <- setdiff(1:n, ind.train)
     
   # Get results from all methods
@@ -273,20 +274,21 @@ for (i in rows_along(params.grid1)) {
 }
 ```
 
-### Simulations n°2 (without T-Trees, with logit-triple)
+### Scenario n°1 (without T-Trees)
 
 ```{r}
 params.grid2 <- expand.grid(
+  n.train = 6000,
   par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = c(0.5, 0.8), 
   par.model  = c("simple", "fancy"),
-  num.simu   = 1:20,
+  num.simu   = 1:100,
   stringsAsFactors = FALSE
 ) 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 if (!dir.exists("results2")) dir.create("results2")
 
 for (i in rows_along(params.grid2)) {
@@ -309,7 +311,7 @@ for (i in rows_along(params.grid2)) {
   )
   
   # Split in training/test sets
-  ind.train <- sort(sample(n, size = n.train))
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
   ind.test <- setdiff(1:n, ind.train)
     
   # Get results from all methods
@@ -323,70 +325,22 @@ for (i in rows_along(params.grid2)) {
 }
 ```
 
-### Simulations n°3 (without logit-triple)
 
-```{r}
-params.grid3 <- expand.grid(
-  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
-  par.dist   = c("gaussian", "laplace"), 
-  par.h2     = c(0.5, 0.8), 
-  par.model  = c("simple"),
-  num.simu   = 21:100,
-  stringsAsFactors = FALSE
-) 
-```
-
-```{r, eval=TRUE}
-if (!dir.exists("results3")) dir.create("results3")
-
-for (i in rows_along(params.grid3)) {
-  
-  res.file <- paste0("results3/simu_", i, ".rds")
-  if (file.exists(res.file)) next
-  
-  params <- params.grid3[i, ]
-  par.causal <- params[["par.causal"]][[1]]
-  
-  # Simulate phenotypes
-  pheno.all <- get_pheno(
-    G,    
-    h2 = params[["par.h2"]], 
-    M = as.integer(par.causal[1]), 
-    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
-    effects.dist = params[["par.dist"]], 
-    model = params[["par.model"]], 
-    K = 0.3                 
-  )
-  
-  # Split in training/test sets
-  ind.train <- sort(sample(n, size = n.train))
-  ind.test <- setdiff(1:n, ind.train)
-    
-  # Get results from all methods
-  res <- bind_rows(
-    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
-    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple")
-  )
-  params[["res"]] <- list(res)
-  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
-}
-```
-
-
-### Simulations n°4 (dataset with only chromosome 6)
+### Scenario n°2 (dataset with only chromosome 6)
 
 ```{r}
 params.grid4 <- expand.grid(
+  n.train    = 6000,
   par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = c(0.5, 0.8), 
-  par.model  = c("simple"),
+  par.model  = "simple",
   num.simu   = 1:100,
   stringsAsFactors = FALSE
 ) 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 if (!dir.exists("results4")) dir.create("results4")
 
 G6 <- big_copy(G, ind.col = which(CHR == 6))
@@ -413,7 +367,7 @@ for (i in rows_along(params.grid4)) {
   )
   
   # Split in training/test sets
-  ind.train <- sort(sample(n, size = n.train))
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
   ind.test <- setdiff(1:n, ind.train)
     
   # Get results from all methods
@@ -426,7 +380,7 @@ for (i in rows_along(params.grid4)) {
 }
 ```
 
-### Simulations n°5 (varying training size)
+### Scenario n°3 (varying training size)
 
 ```{r}
 params.grid5 <- expand.grid(
@@ -434,7 +388,7 @@ params.grid5 <- expand.grid(
   par.causal = list(c(300, "all")), 
   par.dist   = c("gaussian", "laplace"), 
   par.h2     = c(0.5, 0.8), 
-  par.model  = c("simple"),
+  par.model  = "simple",
   num.simu   = 1:100,
   stringsAsFactors = FALSE
 ) 

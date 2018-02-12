@@ -247,32 +247,25 @@ One does not simply identify high-risk individuals (Figure \ref{fig:meme}).
 \begin{table}[htbp]
 \caption{Summary of all simulations. When there is symbol `-' in a box, it means that the parameters are the same as the ones in the upper box.}
 \vspace*{0.5em}
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
 \hline
-Numero of & \multirow{2}{*}{Dataset} & Size of & Causal SNPs & Distribution & \multirow{2}{*}{Heritability} & Simulation & Number of & \multirow{2}{*}{Methods} \\ 
-scenario & & training set & (number and location) & of effects & & model & simulations & \\
+Numero of & \multirow{2}{*}{Dataset} & Size of & Causal SNPs & Distribution & \multirow{2}{*}{Heritability} & Simulation & \multirow{2}{*}{Methods} \\ 
+scenario & & training set & (number and location) & of effects & & model & \\
 \hline
 \hline
-\multirow{4}{*}{1} & \multirow{4}{*}{All 22 chromosomes} & \multirow{4}{*}{6000} & 30 in HLA & \multirow{2.5}{*}{Gaussian} & \multirow{4}{*}{0.8} & \multirow{2.5}{*}{simple} & \multirow{4}{*}{5} & PRS \\
-& & & 30 in all & & & & & logit-simple \\
-& & & 300 in all & \multirow{1.5}{*}{Laplace} & & \multirow{1.5}{*}{fancy} & & logit-triple \\
-& & & 3000 in all & & & & & T-Trees \\
+\multirow{4}{*}{1} & \multirow{4}{*}{All 22 chromosomes} & \multirow{4}{*}{6000} & 30 in HLA & \multirow{2.5}{*}{Gaussian} & \multirow{2.5}{*}{0.5} & \multirow{2.5}{*}{simple} & PRS \\
+& & & 30 in all & & & & logit-simple \\
+& & & 300 in all & \multirow{1.5}{*}{Laplace} & \multirow{1.5}{*}{0.8} & \multirow{1.5}{*}{fancy} & logit-triple \\
+& & & 3000 in all & & & & (T-Trees) \\
 \hline
-\multirow{3}{*}{2} & \multirow{3}{*}{-} & \multirow{3}{*}{-} & \multirow{3}{*}{-} & \multirow{3}{*}{-} & \multirow{2}{*}{0.5} & \multirow{3}{*}{-} & \multirow{3}{*}{20} & PRS \\ 
-& & & & & \multirow{2.2}{*}{0.8} & & & logit-simple \\
-& & & & & & & & logit-triple \\
+\multirow{2}{*}{2} & \multirow{2}{*}{Chromosome 6 only} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{simple} & PRS \\ 
+& & & & & & & logit-simple\\
 \hline
-\multirow{2}{*}{3} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{simple} & \multirow{2}{*}{80} & PRS \\ 
-& & & & & & & & logit-simple \\
-\hline
-\multirow{2}{*}{4} & \multirow{2}{*}{Chromosome 6 only} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{100} & \multirow{2}{*}{-} \\ 
-& & & & & & & & \\
-\hline
-\multirow{5}{*}{5} & \multirow{5}{*}{All 22 chromosomes} & 1000 & \multirow{5}{*}{300 in all} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{100} & \multirow{5}{*}{-} \\ 
-& & 2000 & & & & & & \\
-& & 3000 & & & & & & \\
-& & 4000 & & & & & & \\
-& & 5000 & & & & & & \\
+\multirow{5}{*}{3} & \multirow{5}{*}{All 22 chromosomes} & 1000 & \multirow{5}{*}{300 in all} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{-} \\ 
+& & 2000 & & & & & \\
+& & 3000 & & & & & \\
+& & 4000 & & & & & \\
+& & 5000 & & & & & \\
 \hline
 \end{tabular}
 \label{tab:simus}
