@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.width = 10,
-                      fig.asp = 0.7, dev = "svg")
+                      fig.asp = 0.7, dev = "svg", cache = TRUE)
 options(width = 95)
 ```
 
@@ -49,22 +49,29 @@ ind.test <- setdiff(rows_along(G), ind.train)
 
 ```{r}
 # GWAS
-gwas.train <- big_univLogReg(
-  G, y[ind.train], ind.train = ind.train, 
-  covar.train = obj.svd$u[ind.train, , drop = FALSE], 
-  ncores = NCORES
+system.time(
+  gwas.train <- big_univLogReg(
+    G, y[ind.train], ind.train = ind.train, 
+    covar.train = obj.svd$u[ind.train, , drop = FALSE], 
+    ncores = NCORES
+  )
 )
+```
+
+```{r}
+# Q-Q plot
 snp_qq(gwas.train) +
-  coord_cartesian(ylim = c(0, 25))
+  coord_cartesian(ylim = c(0, 20))
 gwas.train.gc <- snp_gc(gwas.train)
 ```
 
 ```{r, dev="png"}
+# Manhattan plot
 labels <- 1:22; labels[c(11, 13, 15, 17, 18, 20, 21)] <- ""
 cowplot::plot_grid(
   snp_manhattan(gwas.train.gc, CHR, POS, labels = labels),
   snp_manhattan(gwas.train.gc, CHR, POS, labels = labels) +
-    coord_cartesian(ylim = c(0, 25)) + 
+    coord_cartesian(ylim = c(0, 22)) + 
     geom_hline(yintercept = -log10(5e-8), color = "red", linetype = 3),
   align = "hv", ncol = 1, labels = LETTERS[1:2], label_size = 25, scale = 0.95
 )
@@ -93,70 +100,78 @@ prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
                thr.list = thrs)
 nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep] > thr))
 aucs <- apply(prs, 2, AUC, target = y[ind.test])
+summary(aucs)
+```
+
+```{r}
+pAUC <- function(pred, target, p = 0.1) {
+  val.min <- min(target)
+  q <- quantile(pred[target == val.min], probs = 1 - p)
+  ind <- (target != val.min) | (pred > q)
+  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
+           error = function(e) p^2 / 2)  # all same prediction
+}
+plot_density_AUC <- function(pred, true = y[ind.test]) {
+  data.frame(pred = pred, pheno = as.factor(true)) %>%
+  myggplot() +
+  geom_density(aes(pred, fill = pheno), alpha = 0.4) +
+  ggtitle(sprintf("AUC = %s%% | pAUC = %s", 
+                  round(100 * AUC(pred, true), 2),
+                  round(pAUC(pred, true), 4)))
+}
+plot_density_AUC(prs[, which.max(aucs)])
 ```
 
 
 ### Logistic regression
 
-```{r}
-logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
-                      ind.train = ind.train, 
-                      covar.train = obj.svd$u[ind.train, ],
-                      alpha = 0.5, dfmax = 20e3)
-preds1 <- predict(logit, X = G, ind.row = ind.test, 
-                  covar.row = obj.svd$u[ind.test, ])
-library(Matrix)
-nb.pred1 <- colSums(logit$beta != 0)
-aucs1 <- apply(preds1, 2, AUC, target = y[ind.test])
-```
-
 Cross-Model Selection and Averaging (CMSA):
 
 ```{r}
-system.time({
-  cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
-                         X = G, y.train = y[ind.train], 
-                         ind.train = ind.train, 
-                         covar.train = obj.svd$u[ind.train, ],
-                         alpha = 0.5, dfmax = 20e3, 
-                         ncores = NCORES)
-  
-  preds2 <- predict(cmsa.logit, X = G, ind.row = ind.test, 
-                    covar.row = obj.svd$u[ind.test, ])
-})
-(auc.cmsa <- AUC(preds2, y[ind.test]))
+# Train logit-simple
+system.time(
+  logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
+                        ind.train = ind.train, 
+                        covar.train = obj.svd$u[ind.train, ],
+                        ncores = NCORES)
+)
+# Get K = 10 predictions/individuals
+preds1 <- predict(logit, X = G, ind.row = ind.test, 
+                  covar.row = obj.svd$u[ind.test, ])
+(nb.pred1 <- sum(rowSums(sapply(logit, function(l) l$beta.X != 0)) > 0))
+(aucs1 <- apply(preds1, 2, AUC, target = y[ind.test]))
+# Combining all K predictions
+preds1.comb <- rowMeans(preds1)
+AUC(preds1.comb, y[ind.test])
 ```
 
+```{r}
+plot_density_AUC(preds1.comb)
+```
 
 ### Logistic regression with feature engineering
 
+
 ```{r}
 G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
-logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
-                       ind.train = ind.train, 
-                       covar.train = obj.svd$u[ind.train, ],
-                       alpha = 0.5, dfmax = 20e3)
-preds3 <- predict(logit2, X = G2, ind.row = ind.test, 
+system.time(
+  logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
+                         ind.train = ind.train, 
+                         covar.train = obj.svd$u[ind.train, ],
+                         ncores = NCORES)
+)
+
+preds2 <- predict(logit2, X = G2, ind.row = ind.test, 
                   covar.row = obj.svd$u[ind.test, ])
-nb.pred2 <- colSums(logit2$beta != 0)
-aucs2 <- apply(preds3, 2, AUC, target = y[ind.test])
+(nb.pred2 <- sum(rowSums(sapply(logit2, function(l) l$beta.X != 0)) > 0))
+(aucs2 <- apply(preds2, 2, AUC, target = y[ind.test]))
+# Combining all K predictions
+preds2.comb <- rowMeans(preds2)
+AUC(preds2.comb, y[ind.test])
 ```
 
-Cross-Model Selection and Averaging (CMSA):
-
 ```{r}
-system.time({
-  cmsa.logit2 <- big_CMSA(FUN = big_spLogReg, feval = AUC,
-                          X = G2, y.train = y[ind.train], 
-                          ind.train = ind.train, 
-                          covar.train = obj.svd$u[ind.train, ],
-                          alpha = 0.5, dfmax = 20e3, 
-                          ncores = NCORES)
-  
-  preds4 <- predict(cmsa.logit2, X = G2, ind.row = ind.test, 
-                    covar.row = obj.svd$u[ind.test, ])
-})
-(auc.cmsa2 <- AUC(preds4, y[ind.test]))
+plot_density_AUC(preds2.comb)
 ```
 
 ### Regularization paths
@@ -209,22 +224,17 @@ ggsave("figures/supp-celiac-roc.pdf", scale = 1/90, width = 700, height = 700)
 
 ## Top scores
 
-First, we get the SNP with the highest ratio of cases over controls for homozygous-recessive individuals.
+First, we get the most significant SNP.
 
 ```{r}
-props <- sapply(cols_along(G), function(j) {
-  ccoj <- counts.control[, j]
-  mut <- `if`(ccoj[1] < ccoj[3], 1, 3)
-  `if`(counts.case[mut, j] > 100, counts.case[mut, j] / ccoj[mut], 0)
-})
-theone <- which.max(props)
+theone <- which.max(abs(gwas.train.gc$score))
+ind0 <- which(G[ind.test, theone] == 0)
+(M <- length(ind0))
 table(Geno = G[, theone], forcats::fct_recode(as.factor(y), Control = "0", Case = "1"))
 ```
 
 ```{r}
 # one geno
-ind0 <- which(G[ind.test, theone] == 0)
-(M <- length(ind0))
 mean(y[ind.test[ind0]]) 
 # prs max
 indPRS <- order(prs[, which.max(aucs)], decreasing = TRUE)[1:M]
@@ -249,7 +259,7 @@ for (i in seq_len(100)) {
   res.file <- paste0("results6/simu_", i, ".rds")
   if (file.exists(res.file)) next
   
-  ind.train <- sort(sample(nrow(G)))
+  ind.train <- sort(sample(nrow(G), replace = TRUE))
   
   cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
                          X = G, y.train = y[ind.train], 
@@ -258,7 +268,9 @@ for (i in seq_len(100)) {
                          alpha = 0.5, dfmax = 20e3, 
                          ncores = NCORES)
   
-  saveRDS(cmsa.logit[cols_along(G)], file = res.file)
+  saveRDS(list(betas = cmsa.logit[cols_along(G)],
+               ind.test = setdiff(rows_along(G), ind.train)),
+          file = res.file)
 }
 ```
 
