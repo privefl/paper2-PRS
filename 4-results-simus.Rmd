@@ -47,7 +47,7 @@ format_results <- function(results) {
 ```
 
 ```{r}
-boot <- function(x, n = 1e4, f = mean) {
+boot <- function(x, n = 1e5, f = mean) {
   sd(replicate(n, f(sample(x, replace = TRUE))))
 }
 ```
@@ -137,13 +137,13 @@ compare_logit <- function(results, with_method) {
     plot_extra("nb.preds", "Number of predictors"),
     plot_extra("timing", "Execution time (in seconds)"),
     ncol = 1, align = "hv", scale = 0.95, 
-    labels = LETTERS[2:3], label_size = 15
+    labels = LETTERS[2:3], label_size = 20
   )
   
   p12 <- cowplot::plot_grid(
     p1 + theme(legend.position = "none"), p2, 
     ncol = 2, scale = 0.95, rel_widths = c(6, 4), 
-    labels = c("A", ""), label_size = 15
+    labels = c("A", ""), label_size = 20
   )
   
   cowplot::plot_grid(
@@ -164,7 +164,7 @@ results1 <- list.files("results1", full.names = TRUE) %>%
 ```{r, out.width="90%", fig.width = 14}
 compare_logit(results1, with_method = "T-Trees")
 
-ggsave("figures/supp-ttrees.pdf", scale = 1/90, width = 1400, height = 1060)
+ggsave("figures/supp-ttrees.pdf", scale = 1/100, width = 1400, height = 1060)
 ```
 
 ## Results with logit-triple & model fancy
@@ -185,7 +185,7 @@ results2.summary <- results2 %>%
 ```{r, out.width="90%", fig.width = 14}
 compare_logit(results2, with_method = "logit-triple")
 
-ggsave("figures/supp-triple.pdf", scale = 1/90, width = 1400, height = 1060)
+ggsave("figures/supp-triple.pdf", scale = 1/100, width = 1400, height = 1060)
 ```
 
 ```{r}
@@ -194,7 +194,7 @@ results2.summary %>%
   barplot_causal_one(h2 = 0.5) +
   facet_grid(par.model ~ par.dist)
 
-ggsave("figures/supp-AUC-triple.pdf", scale = 1/90, width = 1242, height = 951)
+ggsave("figures/supp-AUC-triple.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 
@@ -205,7 +205,7 @@ results2.summary %>%
   filter(par.model == "fancy", method %in% c("logit-simple", "PRS-max")) %>%
   barplot_causal_all()
   
-ggsave("figures/supp-AUC-logit-fancy.pdf", scale = 1/90, width = 1242, height = 951)
+ggsave("figures/supp-AUC-logit-fancy.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 ```{r}
@@ -213,19 +213,19 @@ results2.summary %>%
   filter(par.model == "fancy", grepl("PRS", method)) %>%
   barplot_causal_all()
 
-ggsave("figures/supp-AUC-PRS-fancy.pdf", scale = 1/90, width = 1242, height = 951)
+ggsave("figures/supp-AUC-PRS-fancy.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 ## Results with only logit-simple & PRSs
 
-### Correlation between predictive measures [MOVE TOP]
+### Correlation between predictive measures
 
 ```{r}
 results3 <- results2 %>%
   filter(par.model == "simple", method != "logit-triple")
 ```
 
-```{r, fig.asp=0.5, out.width="95%", fig.width=16}
+```{r, fig.asp=0.7, out.width="95%", fig.width=16}
 results3 %>%
   filter(method %in% c("logit-simple", "PRS-max")) %>%
   mutate(Parameters  = interaction(par.h2, par.dist, method, sep = " | ")) %>%
@@ -235,7 +235,8 @@ results3 %>%
   theme(legend.key.width = unit(3.5, "line"), 
         legend.direction = "horizontal") + 
   labs(y = "Partial AUC (specificity: [0.9, 1])") +
-  theme(legend.position = "top")
+  theme(legend.position = "top", axis.title = element_text(size = rel(2.2))) +
+  
 
 ggsave("figures/supp-AUC-corr.pdf", scale = 1/100, width = 1525, height = 983)
 ```
@@ -318,7 +319,7 @@ results34 %>%
   scale_color_brewer(type = "qual", palette = 2) + 
   labs(x = "Method")
 
-ggsave("figures/supp-AUC-chr6.pdf", scale = 1/90, width = 1153, height = 908)
+ggsave("figures/supp-AUC-chr6.pdf", scale = 1/110, width = 1153, height = 908)
 ```
 
 ### Varying training size & all shromosomes
@@ -356,6 +357,6 @@ myggplot(results35.summary, aes(n.train, AUC_mean, color = method, linetype = me
        color = "Method", linetype = "Method") +
   theme(legend.key.width = unit(3, "line"))
 
-ggsave("figures/main-AUC-ntrain.pdf", scale = 1/90, width = 1050, height = 800)
+ggsave("figures/main-AUC-ntrain.pdf", scale = 1/100, width = 1050, height = 800)
 ```
 

@@ -28,7 +28,13 @@ Each method's function returns a tibble (data frame) with 4 columns:
 ### PRS
 
 ```{r}
-paste(sprintf("%.1e", 10^(-c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100))))), collapse = ", ")
+10^(-c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))) %>%
+  sprintf("%.1e", .) %>%
+  paste(collapse = ", ")
+```
+
+
+```{r}
 PRS <- function(G, infos.chr, infos.pos, 
                 pheno.all, covar.all, 
                 ind.train, ind.test) {
