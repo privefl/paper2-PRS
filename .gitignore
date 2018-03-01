@@ -1,5 +1,7 @@
 backingfiles
 discovery
+test_farmcpu
+test_farmcpu.desc
 *.jdb
 *.bloc
 results1

@@ -1,0 +1,72 @@
+## Stability of selection of the "logit-simple"
+
+Train on 100 bootstrap samples of the Celiac dataset.
+
+```{r, eval=FALSE}
+if (!dir.exists("results6")) dir.create("results6")
+
+for (i in seq_len(100)) {
+  
+  res.file <- paste0("results6/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  ind.train <- sort(sample(nrow(G), replace = TRUE))
+  
+  cmsa.logit <- big_CMSA(FUN = big_spLogReg, feval = AUC,
+                         X = G, y.train = y[ind.train], 
+                         ind.train = ind.train, 
+                         covar.train = obj.svd$u[ind.train, ],
+                         alpha = 0.5, dfmax = 20e3, 
+                         ncores = NCORES)
+  
+  saveRDS(list(betas = cmsa.logit[cols_along(G)],
+               ind.test = setdiff(rows_along(G), ind.train)),
+          file = res.file)
+}
+```
+
+```{r}
+results6 <- list.files("results6", full.names = TRUE) %>%
+  map(~readRDS(.x)) %>%
+  do.call("cbind", .)
+```
+
+```{r}
+n_enter <- rowSums(results6 != 0)
+mean(n_enter == 0)                ## Proportion of SNPs never entering
+n_enter_once <- n_enter[n_enter != 0]
+mean(n_enter_once)                ## Mean number of times a SNPs enter 
+                                  ## if entering at least once
+bigstatsr:::MY_THEME(
+  qplot(n_enter_once, geom = "bar") +
+    labs(x = "Number of times")
+)
+```
+
+```{r}
+ggsave("figures/supp-celiac-stabilitybar.pdf", scale = 1/90, width = 1000, height = 700)
+```
+
+```{r}
+length(always_enter <- which(n_enter == ncol(results6)))
+cowplot::plot_grid(
+  snp_manhattan(gwas.train.gc, CHR, POS, labels = labels, 
+                ind.highlight = always_enter),
+  snp_manhattan(gwas.train.gc, CHR, POS, labels = labels, 
+                ind.highlight = always_enter) +
+    coord_cartesian(ylim = c(0, 25)) + 
+    geom_hline(yintercept = -log10(5e-8), color = "red", linetype = 3),
+  align = "hv", ncol = 1, labels = LETTERS[1:2], label_size = 25, scale = 0.95
+)
+```
+
+```{r}
+ggsave("figures/supp-celiac-man-col.png", scale = 1/90, width = 1300, height = 1000)
+```
+
+```{r}
+sq_effects_always <- colSums((results6[always_enter, ])^2)
+sq_effects_others <- colSums((results6[-always_enter, ])^2)
+summary(100 * sq_effects_always / (sq_effects_always + sq_effects_others))
+```
+
