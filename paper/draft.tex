@@ -225,15 +225,17 @@ In terms of computation time, we report only the GWAS computation for the ``C+T'
 Finally, note that the scores you get with the logistic regressions are probabilities, which is not the case with the ``C+T'' method (Figure \ref{fig:supp-score-densities}).[QUE RAPPORTER SUR LES DENSITY PLOTS DU SUPMAT?]
 
 \begin{table}[h]
-\caption{Results for the real Celiac dataset.\label{tab:results-celiac}}
+\caption{Results for the real Celiac dataset. The results are averaged over 100 runs where the training step is randomly composed of 12,000 individuals. In the parentheses is reported the standard deviation of $10^5$ bootstrap samples of the mean of the corresponding variable. Results are reported with 3 significant digits.\label{tab:results-celiac}}
 \vspace*{0.5em}
 \centering
 \begin{tabular}{|l|c|c|c|c|}
-\hline
-Method & AUC (\%) & pAUC & \# predictors & Execution time (s) \\ \hline
-PRS-max & 82.46 & 0.0283 & 13277 & 149 \\ 
-logit-simple & 88.71 & 0.0411 & 2198 & 78 \\
-logit-triple & 89.26 & 0.0440 & 4617 & 161 \\ \hline
+  \hline
+Method & AUC & pAUC & \# predictors & Execution time (s) \\ 
+  \hline
+PRS-max & 0.824 (0.000704) & 0.0286 (0.00016) & 9850 (781) & 148 (0.414) \\ 
+logit-simple & 0.888 (0.000468) & 0.0414 (0.000164) & 3220 (62) & 83.8 (1.27) \\ 
+logit-triple & 0.892 (0.000488) & 0.0429 (0.000174) & 4470 (80.6) & 141 (1.85) \\ 
+   \hline
 \end{tabular}
 \end{table}
 

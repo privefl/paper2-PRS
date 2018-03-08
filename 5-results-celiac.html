@@ -125,24 +125,15 @@ $(document).ready(function () {
 </div>
 
 
-<pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## ── Attaching packages ────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 2.2.1     ✔ purrr   0.2.4
-## ✔ tibble  1.4.2     ✔ dplyr   0.7.4
-## ✔ tidyr   0.8.0     ✔ stringr 1.3.0
-## ✔ readr   1.1.1     ✔ forcats 0.3.0</code></pre>
-<pre><code>## ── Conflicts ───────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
-<pre class="r"><code>myggplot &lt;- function(..., coeff = 1) {
+<pre class="r"><code>library(tidyverse)
+myggplot &lt;- function(..., coeff = 1) {
   bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
 } </code></pre>
 <div id="data" class="section level2">
 <h2>Data</h2>
 <pre class="r"><code># Read file, see &quot;Preprocessing&quot; notebook
-library(bigsnpr)</code></pre>
-<pre><code>## Loading required package: bigstatsr</code></pre>
-<pre class="r"><code>celiac &lt;- snp_attach(&quot;backingfiles/celiacQC.rds&quot;)
+library(bigsnpr)
+celiac &lt;- snp_attach(&quot;backingfiles/celiacQC.rds&quot;)
 G &lt;- celiac$genotypes
 CHR &lt;- celiac$map$chromosome
 POS &lt;- celiac$map$physical.pos
@@ -169,8 +160,8 @@ obj.svd &lt;- snp_autoSVD(G, CHR, POS, ncores = NCORES)</code></pre>
 ## 
 ## Converged!</code></pre>
 </div>
-<div id="predictive-models" class="section level2">
-<h2>Predictive models</h2>
+<div id="predictive-models-and-plots" class="section level2">
+<h2>Predictive models and plots</h2>
 <pre class="r"><code># Divide in training/test sets
 dim(G)</code></pre>
 <pre><code>## [1]  15155 281122</code></pre>
@@ -357,6 +348,165 @@ mean(y[ind.test[indLS]])</code></pre>
 indLT &lt;- order(preds2.comb, decreasing = TRUE)[1:M]
 mean(y[ind.test[indLT]])</code></pre>
 <pre><code>## [1] 0.8820513</code></pre>
+</div>
+<div id="predictive-methods-multiple-times" class="section level2">
+<h2>Predictive methods (multiple times)</h2>
+<div id="methods-functions" class="section level3">
+<h3>Methods’ functions</h3>
+<p>Each method’s function returns a tibble (data frame) with 4 columns:</p>
+<ol style="list-style-type: decimal">
+<li>the name of the method,</li>
+<li>the predictive scores and true phenotypes for the test set, as a <a href="http://r4ds.had.co.nz/many-models.html">list-column</a>,</li>
+<li>the timing of the main computations (in seconds),</li>
+<li>the number of SNPs used for the prediction.</li>
+</ol>
+<div id="prs-1" class="section level4">
+<h4>PRS</h4>
+<pre class="r"><code>PRS &lt;- function(G, infos.chr, infos.pos, 
+                pheno.all, covar.all, 
+                ind.train, ind.test) {
+  
+  timing &lt;- system.time({
+      
+    # GWAS
+    gwas.train &lt;- big_univLogReg(
+      G, pheno.all[ind.train], ind.train = ind.train, 
+      covar.train = covar.all[ind.train, , drop = FALSE], 
+      ncores = nb_cores()
+    )
+    gwas.train.gc &lt;- snp_gc(gwas.train)
+    
+    # Clumping on the test set
+    ind.keep &lt;- snp_clumping(G, infos.chr = infos.chr,
+                             ind.row = ind.test,
+                             thr.r2 = 0.2, 
+                             S = abs(gwas.train.gc$score),
+                             size = 500,
+                             is.size.in.bp = TRUE,
+                             infos.pos = infos.pos,
+                             ncores = nb_cores())
+    
+    # PRS
+    thrs &lt;- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
+    lpS &lt;- -predict(gwas.train.gc)
+    nb.pred &lt;- sapply(thrs, function(thr) sum(lpS[ind.keep] &gt; thr))
+    prs &lt;- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
+                   ind.test = ind.test,
+                   ind.keep = ind.keep,
+                   lpS.keep = lpS[ind.keep], 
+                   thr.list = thrs)
+  })[3]
+  
+  ind.best &lt;- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
+  
+  tibble(
+    method = &quot;PRS-max&quot;,
+    eval = list(cbind(prs[, ind.best], pheno.all[ind.test])),
+    timing = timing,
+    nb.preds = nb.pred[ind.best]
+  )
+}</code></pre>
+</div>
+<div id="logistic-regression-1" class="section level4">
+<h4>Logistic regression</h4>
+<pre class="r"><code>logit.CMSA &lt;- function(G, pheno.all, covar.all, ind.train, ind.test, method, print_all = FALSE) {
+  
+  timing &lt;- system.time({
+    
+    cmsa.logit &lt;- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
+                               ind.train = ind.train, 
+                               covar.train = covar.all[ind.train, , drop = FALSE],
+                               ncores = nb_cores())
+    
+    preds.all &lt;- predict(cmsa.logit, X = G, ind.row = ind.test, 
+                         covar.row = covar.all[ind.test, , drop = FALSE])
+    if (print_all) print(preds.all)
+    preds &lt;- rowMeans(preds.all)
+  })[3]
+  
+  tibble(
+    method   = method, 
+    eval     = list(cbind(preds, pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) &gt; 0)
+  )
+}</code></pre>
+</div>
+</div>
+<div id="run-multiple-times" class="section level3">
+<h3>Run multiple times</h3>
+<pre class="r"><code>if (!dir.exists(&quot;results6&quot;)) dir.create(&quot;results6&quot;)
+pheno.all &lt;- y
+covar.all &lt;- obj.svd$u
+
+for (i in 1:100) {
+  
+  res.file &lt;- paste0(&quot;results6/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(nrow(G), size = 12e3))
+  ind.test &lt;- setdiff(rows_along(G), ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, &quot;logit-triple&quot;)
+  )
+  saveRDS(res, file = res.file)
+}</code></pre>
+<pre class="r"><code>pAUC &lt;- function(pred, target, p = 0.1) {
+  val.min &lt;- min(target)
+  q &lt;- quantile(pred[target == val.min], probs = 1 - p)
+  ind &lt;- (target != val.min) | (pred &gt; q)
+  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
+           error = function(e) p^2 / 2)  # all same prediction
+}
+
+format_results &lt;- function(results) {
+  results %&gt;%
+    as_tibble() %&gt;%
+    mutate(
+      AUC = map_dbl(eval, ~ bigstatsr::AUC(.x[, 1], .x[, 2])),
+      pAUC = map_dbl(eval, ~ pAUC(.x[, 1], .x[, 2]))
+    )
+}
+
+boot &lt;- function(x, n = 1e5, f = mean) {
+  sd(replicate(n, f(sample(x, replace = TRUE))))
+}
+
+list.files(path = &quot;results6/&quot;, full.names = TRUE) %&gt;%
+  map_df(readRDS) %&gt;%
+  format_results() %&gt;%
+  group_by(method) %&gt;%
+  summarize_at(-1, function(x) {
+    glue::glue(&quot;{signif(mean(x), 3)} ({signif(boot(x), 3)})&quot;)
+  }) %&gt;%
+  print() %&gt;%
+  xtable::xtable()</code></pre>
+<pre><code>## # A tibble: 3 x 5
+##   method       timing      nb.preds    AUC              pAUC             
+##   &lt;chr&gt;        &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;            &lt;chr&gt;            
+## 1 logit-simple 83.8 (1.27) 3220 (62.3) 0.888 (0.000468) 0.0414 (0.000164)
+## 2 logit-triple 141 (1.85)  4470 (80.7) 0.892 (0.000488) 0.0429 (0.000174)
+## 3 PRS-max      148 (0.415) 9850 (782)  0.824 (0.000704) 0.0286 (0.000159)</code></pre>
+<pre><code>## % latex table generated in R 3.4.1 by xtable 1.8-2 package
+## % Thu Mar  8 14:44:01 2018
+## \begin{table}[ht]
+## \centering
+## \begin{tabular}{rlllll}
+##   \hline
+##  &amp; method &amp; timing &amp; nb.preds &amp; AUC &amp; pAUC \\ 
+##   \hline
+## 1 &amp; logit-simple &amp; 83.8 (1.27) &amp; 3220 (62.3) &amp; 0.888 (0.000468) &amp; 0.0414 (0.000164) \\ 
+##   2 &amp; logit-triple &amp; 141 (1.85) &amp; 4470 (80.7) &amp; 0.892 (0.000488) &amp; 0.0429 (0.000174) \\ 
+##   3 &amp; PRS-max &amp; 148 (0.415) &amp; 9850 (782) &amp; 0.824 (0.000704) &amp; 0.0286 (0.000159) \\ 
+##    \hline
+## \end{tabular}
+## \end{table}</code></pre>
+</div>
 </div>
 
 

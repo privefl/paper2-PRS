@@ -36,91 +36,6 @@ y <- celiac$fam$affection - 1
 obj.svd <- snp_autoSVD(G, CHR, POS, ncores = NCORES)
 ```
 
-## Methods' functions
-
-Each method's function returns a tibble (data frame) with 4 columns:
-
-1. the name of the method,
-2. the predictive scores and true phenotypes for the test set, as a [list-column](http://r4ds.had.co.nz/many-models.html),
-3. the timing of the main computations (in seconds),
-4. the number of SNPs used for the prediction.
-
-### PRS
-
-```{r}
-PRS <- function(G, infos.chr, infos.pos, 
-                pheno.all, covar.all, 
-                ind.train, ind.test) {
-  
-  timing <- system.time({
-      
-    # GWAS
-    gwas.train <- big_univLogReg(
-      G, pheno.all[ind.train], ind.train = ind.train, 
-      covar.train = covar.all[ind.train, , drop = FALSE], 
-      ncores = nb_cores()
-    )
-    gwas.train.gc <- snp_gc(gwas.train)
-    
-    # Clumping on the test set
-    ind.keep <- snp_clumping(G, infos.chr = infos.chr,
-                             ind.row = ind.test,
-                             thr.r2 = 0.2, 
-                             S = abs(gwas.train.gc$score),
-                             size = 500,
-                             is.size.in.bp = TRUE,
-                             infos.pos = infos.pos,
-                             ncores = nb_cores())
-    
-    # PRS
-    thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
-    lpS <- -predict(gwas.train.gc)
-    nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep] > thr))
-    prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
-                   ind.test = ind.test,
-                   ind.keep = ind.keep,
-                   lpS.keep = lpS[ind.keep], 
-                   thr.list = thrs)
-  })[3]
-  
-  ind.best <- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
-  
-  tibble(
-    method = "PRS-max",
-    eval = list(cbind(prs[, ind.best], pheno.all[ind.test])),
-    timing = timing,
-    nb.preds = nb.pred[ind.best]
-  )
-}
-```
-
-### Logistic regression
-
-```{r}
-logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method, print_all = FALSE) {
-  
-  timing <- system.time({
-    
-    cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
-                               ind.train = ind.train, 
-                               covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = nb_cores())
-    
-    preds.all <- predict(cmsa.logit, X = G, ind.row = ind.test, 
-                         covar.row = covar.all[ind.test, , drop = FALSE])
-    if (print_all) print(preds.all)
-    preds <- rowMeans(preds.all)
-  })[3]
-  
-  tibble(
-    method   = method, 
-    eval     = list(cbind(preds, pheno.all[ind.test])),
-    timing   = timing,
-    nb.preds = sum(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) > 0)
-  )
-}
-```
-
 ## Predictive models and plots
 
 ```{r}
@@ -134,15 +49,6 @@ ind.test <- setdiff(rows_along(G), ind.train)
 ### PRS
 
 ```{r}
-res.PRS <- PRS(
-  G = G,
-  infos.chr = CHR,
-  infos.pos = POS,
-  pheno.all = y,
-  covar.all = obj.svd$u,
-  ind.train = ind.train,
-  ind.test = ind.test
-)
 # GWAS
 system.time(
   gwas.train <- big_univLogReg(
@@ -304,91 +210,6 @@ bigstatsr:::MY_THEME(
 ggsave("figures/celiac-roc.pdf", scale = 1/90, width = 700, height = 700)
 ```
 
-## Predictive methods (multiple times)
-
-```{r}
-# Divide in training/test sets
-ind.train <- sort(sample(nrow(G), size = 12e3))
-ind.test <- setdiff(rows_along(G), ind.train)
-```
-
-### PRS
-
-```{r}
-# PRS
-PRS <- function() {
-  
-  system.time(
-  gwas.train <- big_univLogReg(
-    G, y[ind.train], ind.train = ind.train, 
-    covar.train = obj.svd$u[ind.train, , drop = FALSE], 
-    ncores = NCORES
-  )
-)
-}
-
-```
-
-
-
-
-### Logistic regression
-
-Cross-Model Selection and Averaging (CMSA):
-
-```{r}
-# Train logit-simple
-system.time(
-  logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
-                        ind.train = ind.train, 
-                        covar.train = obj.svd$u[ind.train, ],
-                        ncores = NCORES)
-)
-# Get K = 10 predictions/individuals
-preds1 <- predict(logit, X = G, ind.row = ind.test, 
-                  covar.row = obj.svd$u[ind.test, ])
-(nb.pred1 <- sum(rowSums(sapply(logit, function(l) l$beta.X != 0)) > 0))
-(aucs1 <- apply(preds1, 2, AUC, target = y[ind.test]))
-# Combining all K predictions
-preds1.comb <- rowMeans(preds1)
-AUC(preds1.comb, y[ind.test])
-```
-
-```{r}
-(p2 <- plot_density_AUC(preds1.comb))
-```
-
-### Logistic regression with feature engineering
-
-```{r}
-G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
-system.time(
-  logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
-                         ind.train = ind.train, 
-                         covar.train = obj.svd$u[ind.train, ],
-                         ncores = NCORES)
-)
-
-preds2 <- predict(logit2, X = G2, ind.row = ind.test, 
-                  covar.row = obj.svd$u[ind.test, ])
-(nb.pred2 <- sum(rowSums(sapply(logit2, function(l) l$beta.X != 0)) > 0))
-(aucs2 <- apply(preds2, 2, AUC, target = y[ind.test]))
-# Combining all K predictions
-preds2.comb <- rowMeans(preds2)
-AUC(preds2.comb, y[ind.test])
-```
-
-```{r}
-(p3 <- plot_density_AUC(preds2.comb))
-```
-
-```{r, out.width="70%", fig.asp=900/780}
-list(p1, p2, p3) %>%
-  lapply(function(p) p + theme(legend.position = "none")) %>%
-  cowplot::plot_grid(plotlist = ., ncol = 1, labels = LETTERS[1:3], label_size = 20, scale = 0.95) %>%
-  cowplot::plot_grid(., cowplot::get_legend(p1), rel_widths = c(1, 0.15), scale = 0.95)
-ggsave("figures/supp-score-densities.pdf", scale = 1/100, width = 780, height = 900)
-```
 
 ## Top scores
 
@@ -415,4 +236,152 @@ mean(y[ind.test[indLS]])
 indLT <- order(preds2.comb, decreasing = TRUE)[1:M]
 mean(y[ind.test[indLT]])
 ```
+
+
+## Predictive methods (multiple times)
+
+### Methods' functions
+
+Each method's function returns a tibble (data frame) with 4 columns:
+
+1. the name of the method,
+2. the predictive scores and true phenotypes for the test set, as a [list-column](http://r4ds.had.co.nz/many-models.html),
+3. the timing of the main computations (in seconds),
+4. the number of SNPs used for the prediction.
+
+#### PRS
+
+```{r}
+PRS <- function(G, infos.chr, infos.pos, 
+                pheno.all, covar.all, 
+                ind.train, ind.test) {
+  
+  timing <- system.time({
+      
+    # GWAS
+    gwas.train <- big_univLogReg(
+      G, pheno.all[ind.train], ind.train = ind.train, 
+      covar.train = covar.all[ind.train, , drop = FALSE], 
+      ncores = nb_cores()
+    )
+    gwas.train.gc <- snp_gc(gwas.train)
+    
+    # Clumping on the test set
+    ind.keep <- snp_clumping(G, infos.chr = infos.chr,
+                             ind.row = ind.test,
+                             thr.r2 = 0.2, 
+                             S = abs(gwas.train.gc$score),
+                             size = 500,
+                             is.size.in.bp = TRUE,
+                             infos.pos = infos.pos,
+                             ncores = nb_cores())
+    
+    # PRS
+    thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
+    lpS <- -predict(gwas.train.gc)
+    nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep] > thr))
+    prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
+                   ind.test = ind.test,
+                   ind.keep = ind.keep,
+                   lpS.keep = lpS[ind.keep], 
+                   thr.list = thrs)
+  })[3]
+  
+  ind.best <- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
+  
+  tibble(
+    method = "PRS-max",
+    eval = list(cbind(prs[, ind.best], pheno.all[ind.test])),
+    timing = timing,
+    nb.preds = nb.pred[ind.best]
+  )
+}
+```
+
+#### Logistic regression
+
+```{r}
+logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method, print_all = FALSE) {
+  
+  timing <- system.time({
+    
+    cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
+                               ind.train = ind.train, 
+                               covar.train = covar.all[ind.train, , drop = FALSE],
+                               ncores = nb_cores())
+    
+    preds.all <- predict(cmsa.logit, X = G, ind.row = ind.test, 
+                         covar.row = covar.all[ind.test, , drop = FALSE])
+    if (print_all) print(preds.all)
+    preds <- rowMeans(preds.all)
+  })[3]
+  
+  tibble(
+    method   = method, 
+    eval     = list(cbind(preds, pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) > 0)
+  )
+}
+```
+
+### Run multiple times
+
+```{r, eval=TRUE}
+if (!dir.exists("results6")) dir.create("results6")
+pheno.all <- y
+covar.all <- obj.svd$u
+
+for (i in 1:100) {
+  
+  res.file <- paste0("results6/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(nrow(G), size = 12e3))
+  ind.test <- setdiff(rows_along(G), ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
+    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple")
+  )
+  saveRDS(res, file = res.file)
+}
+```
+```{r}
+pAUC <- function(pred, target, p = 0.1) {
+  val.min <- min(target)
+  q <- quantile(pred[target == val.min], probs = 1 - p)
+  ind <- (target != val.min) | (pred > q)
+  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
+           error = function(e) p^2 / 2)  # all same prediction
+}
+
+format_results <- function(results) {
+  results %>%
+    as_tibble() %>%
+    mutate(
+      AUC = map_dbl(eval, ~ bigstatsr::AUC(.x[, 1], .x[, 2])),
+      pAUC = map_dbl(eval, ~ pAUC(.x[, 1], .x[, 2]))
+    )
+}
+
+boot <- function(x, n = 1e5, f = mean) {
+  sd(replicate(n, f(sample(x, replace = TRUE))))
+}
+
+list.files(path = "results6/", full.names = TRUE) %>%
+  map_df(readRDS) %>%
+  format_results() %>%
+  group_by(method) %>%
+  summarize_at(-1, function(x) {
+    glue::glue("{signif(mean(x), 3)} ({signif(boot(x), 3)})")
+  }) %>%
+  print() %>%
+  xtable::xtable()
+```
+
+
 
