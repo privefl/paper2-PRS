@@ -6,6 +6,7 @@ test_farmcpu.desc
 *.bloc
 results1
 results2
+results2-noparallel
 results3
 results4
 results5

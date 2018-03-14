@@ -197,13 +197,18 @@ scores_tidy <- tibble(
 ) %>%
   gather(key = "Method", value = "Score", -d)
   
+methods.color <- setNames(scales::hue_pal()(6), 
+                          c("logit-simple", "PRS-max", "PRS-stringent",
+                            "T-Trees", "logit-triple", "PRS-all")) 
+
 bigstatsr:::MY_THEME(
   ggplot(scores_tidy, aes(d = d, m = Score, color = Method, linetype = Method)) +
     style_roc(xlab = "1 - Specificity", ylab = "Sensitivity")
 ) +
   geom_roc(n.cuts = 0, size = 2) +
   theme(legend.position = c(0.7, 0.3), legend.key.width = unit(4, "line")) +
-  coord_equal()
+  coord_equal() +
+  scale_color_manual(values = methods.color)
 ```
 
 ```{r}
