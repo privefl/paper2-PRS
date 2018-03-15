@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.width = 10,
-                      fig.asp = 0.7, dev = "svg", cache = TRUE)
+                      fig.asp = 0.7, dev = "svg", cache = FALSE)
 options(width = 95)
 ```
 
@@ -31,14 +31,14 @@ NCORES <- nb_cores()
 y <- celiac$fam$affection - 1
 ```
 
-```{r}
+```{r, cache=TRUE}
 # Compute PCA
 obj.svd <- snp_autoSVD(G, CHR, POS, ncores = NCORES)
 ```
 
 ## Predictive models and plots
 
-```{r}
+```{r, cache=TRUE}
 # Divide in training/test sets
 dim(G)
 set.seed(1)
@@ -48,7 +48,7 @@ ind.test <- setdiff(rows_along(G), ind.train)
 
 ### PRS
 
-```{r}
+```{r, cache=TRUE}
 # GWAS
 system.time(
   gwas.train <- big_univLogReg(
@@ -59,14 +59,14 @@ system.time(
 )
 ```
 
-```{r, dev='png', fig.asp=0.8}
+```{r, dev='png', fig.asp=0.8, cache=TRUE}
 # Q-Q plot
 snp_qq(gwas.train) +
   coord_cartesian(ylim = c(0, 15))
 gwas.train.gc <- snp_gc(gwas.train)
 ```
 
-```{r, dev="png", fig.asp=0.9, out.width="90%"}
+```{r, dev="png", fig.asp=0.9, out.width="90%", cache=TRUE}
 # Manhattan plot
 labels <- 1:22; labels[c(11, 13, 15, 17, 18, 20, 21)] <- ""
 cowplot::plot_grid(
@@ -78,7 +78,7 @@ cowplot::plot_grid(
 )
 ```
 
-```{r}
+```{r, cache=TRUE}
 # Clumping on the test set
 ind.keep <- snp_clumping(G, infos.chr = CHR,
                          ind.row = ind.test,
@@ -90,7 +90,7 @@ ind.keep <- snp_clumping(G, infos.chr = CHR,
                          ncores = NCORES)
 ```
 
-```{r}
+```{r, cache=TRUE}
 # PRS
 thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
 lpS <- -predict(gwas.train.gc)
@@ -114,9 +114,10 @@ pAUC <- function(pred, target, p = 0.1) {
            error = function(e) p^2 / 2)  # all same prediction
 }
 plot_density_AUC <- function(pred, true = y[ind.test]) {
-  data.frame(pred = pred, pheno = as.factor(true)) %>%
+  true_fct <- forcats::fct_recode(as.factor(true), "Control" = "0", "Case" = "1")
+  data.frame(Score = pred, Status = true_fct) %>%
   myggplot() +
-  geom_density(aes(pred, fill = pheno), alpha = 0.4) +
+  geom_density(aes(Score, fill = Status), alpha = 0.4) +
   ggtitle(sprintf("AUC = %s%% | pAUC = %s", 
                   round(100 * AUC(pred, true), 2),
                   round(pAUC(pred, true), 4))) + 
@@ -130,7 +131,7 @@ plot_density_AUC <- function(pred, true = y[ind.test]) {
 
 Cross-Model Selection and Averaging (CMSA):
 
-```{r}
+```{r, cache=TRUE}
 # Train logit-simple
 system.time(
   logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
@@ -154,7 +155,7 @@ AUC(preds1.comb, y[ind.test])
 
 ### Logistic regression with feature engineering
 
-```{r}
+```{r, cache=TRUE}
 G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
 system.time(
   logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
