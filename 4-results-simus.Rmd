@@ -5,8 +5,6 @@ date: "November 17, 2017"
 output: 
   html_document:
     code_folding: hide
-params:
-  ggsave: false
 ---
 
 ```{r setup, include=FALSE}
