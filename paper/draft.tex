@@ -56,7 +56,7 @@
 \begin{document}
 
 
-\title{Predicting complex diseases: performance and robustness [OF NEW METHOD?]}
+\title{Joint estimation of SNP effects improves the prediction of complex diseases // Predicting complex diseases: performance and robustness [OF NEW METHOD?]}
 \author{Florian Priv\'e\,$^{\text{ 1,}*}$, Hugues Aschard\,$^{\text{2}}$ and Michael G.B. Blum\,$^{\text{1,}*}$}
 
 
@@ -91,33 +91,37 @@ We present a comprehensive comparative study of the C+T method, our penalized lo
 \newpage
 \section{Introduction}
 
-Polygenic Risk Scores (PRSs) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRSs have proven to be useful for different applications, such as finding a common genetic contribution between two diseases \cite[]{purcell2009common}. 
-Personalized medicine is another major application of PRSs. Personalized medicine ..will.. use PRSs in screening campaigns in order to identify high-risk individuals for a given disease. As an example of practical application, targeting screening to men at higher polygenic risk could reduce the problem of overdiagnosis and lead to a better benefit-to-harm balance in screening for prostate cancer \cite[]{pashayan2015implications}. 
+Polygenic Risk Scores (PRSs) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRSs are useful for different applications, such as testing polygenicity of a disease and finding a common genetic contribution between two diseases \cite[]{purcell2009common}. 
+Personalized medicine is another major application of PRSs. Personalized medicine envisions to use PRSs in screening campaigns in order to identify high-risk individuals for a given disease [CITE CHATTERJEE 2016]. As an example of practical application, targeting screening to men at higher polygenic risk could reduce the problem of overdiagnosis and lead to a better benefit-to-harm balance in screening for prostate cancer \cite[]{pashayan2015implications}. 
 Moreover, screening based on sequencing seems to make individuals positively change their health behavior, while neither causing patient anxiety nor depression \cite[]{vassy2017impact}.
 Yet, PRSs would have to show a high discriminative power between cases and controls in order to be used for helping in the diagnosis of diseases. 
 For example, for screening high-risk individuals and for presymptomatic diagnosis of the general population, it is suggested that the AUC must be greater than 75\% and 99\% respectively \cite[]{janssens2007impact}.
 
 Many methods have been developed to predict disease status, or more generally any phenotype, based on SNP information.
-A commonly used method, called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') -- also sometimes called genetic profiling ..or even just PRS.. -- is used to derive PRSs from results of Genome-Wide Association Studies (GWASs) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. 
-This technique only ..uses/resorts to.. summary statistics, which makes it very ..suitable.. and also very fast.
+A commonly used method, called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') -- or even just PRS -- is used to derive PRSs from results of Genome-Wide Association Studies (GWASs) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. 
+This technique uses GWAS summary statistics only, which makes it very convenient to compute and also very fast.
 Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{lello2017accurate,yang2010common}. 
-Yet, these models are not designed for predicting a binary trait such as a disease status and have proven not to be optimal at such ..a.. task in another comparative study \cite[]{abraham2013performance}. 
+Yet, the predictions resulting from LMM, known e.g.\ as gBLUP, are not designed for binary traits such as a disease status and are not optimal in this setting \cite[]{abraham2013performance}. 
 Moreover, these methods and their derivatives are often computationally demanding, both in terms of memory and time requirements, which makes them unlikely to be used for prediction on large cohorts \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
-Finally, statistical learning methods have also been used to derive PRSs for complex human disease by jointly estimating SNP effects. Such methods include logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2013walk,botta2014exploiting,wei2009disease}.
+Finally, statistical learning methods have also been used to derive PRSs for complex human diseases by jointly estimating SNP effects. Such methods include logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2013walk,botta2014exploiting,wei2009disease}.
 
-We recently developed two R packages, bigstatsr and bigsnpr, for efficient analysis of large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr includes efficient functions for computing sparse linear and logistic regressions on huge datasets. In this paper, we present a comprehensive comparative study of the C+T method, our penalized logistic regression and the T-Trees algorithm, which is a derivation of random forests and has shown exceptionally good predictive results in \cite{botta2014exploiting}. 
+[REFORMULER EN COMMENCANT PAR LA REGRESSION LOGISTIQUE] -> apport principal du papier (+ la meme dans l'abstract)
+We recently developed two R packages, bigstatsr and bigsnpr, for efficient analysis of large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr includes efficient functions for computing sparse linear and logistic regressions on huge datasets. In this paper, we present a comprehensive comparative study of the C+T method, our penalized logistic regression and the T-Trees algorithm, a derivation of random forests that has shown high predictive performance \cite[]{botta2014exploiting}. 
 Note that in this comparison we do not include any LMM method for the reasons mentioned before and do not include any SVM method because it is expected to give similar results to logistic regression \cite[]{abraham2012sparsnp}.
 For the C+T model, we compare different thresholds of inclusion of SNPs.
 For the logistic regression, we include two novel approaches. 
-First, we introduce a procedure that we call Cross-Model Selection and Averaging (CMSA) for automatically choosing the amount of regularization used (one hyper-parameter of the penalized logistic regression), which directly affects the number of SNPs included in the model. 
+First, we introduce a procedure that we call Cross-Model Selection and Averaging (CMSA) for automatically choosing the regularization parameter of the penalized logistic regression, which directly affects the number of SNPs included in the model. 
 We also show how to use feature engineering in order to capture not only linear effects, but also recessive and dominant effects.
 
 There have already been comparative studies on predicting human binary phenotypes based on genotype data. 
-\citep{abraham2013performance} showed that penalized logistic regression and penalized SVM performed better than the standard C+T method and LMMs, for a wide-range of human diseases.
+\cite{abraham2013performance} showed that penalized logistic regression and penalized SVM performed better than the standard C+T method and LMMs, for a wide-range of human diseases.
 \cite{zhou2013polygenic} used simulations on real genotypes of Australian individuals to show that a hybrid of linear mixed models and sparse regression models performed better in a range of sparse to polygenic disease architectures. 
 \cite{spiliopoulou2015genomic} investigated the effect of relatedness in prediction performance.
 \cite{ware2017heterogeneity} evaluated best practices for using the C+T method and found out that the optimal inclusion threshold is trait-dependent. 
-In this study, we particularly extend the work of \cite{abraham2013performance} by using a simulation framework similar but ..richer/more extenstive.. than the one used in \cite{zhou2013polygenic}. In order to make our comparison as comprehensive as possible, we compare different disease architectures (number, size and location of causal effects and heritability) with different model for generating liability ..scores.., one with only linear effects, and one which combines linear, dominant and ..interaction/interaction-type.. effects. First, we quickly discard T-Trees as being the ..best.. method for predicting disease status based on genotypes.
+In this study, we particularly extend the work of \cite{abraham2013performance} [RELIRE ET PRECISER] while using a simulation framework similar but more extenstive than the one used in \cite{zhou2013polygenic}. 
+In order to make our comparison as comprehensive as possible, we compare different disease architectures by varying the number, size and location of causal effects as well as the heritability. We also compare different models for generating liability scores, one with only linear effects, and one which combines linear, dominant and interaction-type effects.
+
+First, we quickly discard T-Trees because they show lower predictive performance as compared to other methods, while being computationally demanding.
 Then, we show that the penalized logistic regression consistently achieves higher predictive performance while being as fast as the C+T method, whereas predictive performance of the C+T method is very sensitive to the threshold of inclusion of SNPs, depending on the disease architecture, as shown in \cite{ware2017heterogeneity}.
 
 
@@ -130,27 +134,31 @@ Then, we show that the penalized logistic regression consistently achieves highe
 
 We use real genotypes of European individuals from a case/control celiac disease cohort \cite[]{dubois2010multiple}. The composition of this dataset is presented in table \ref{tab:celiac-data}.
 Details of quality control and imputation for this dataset are available in \cite{prive2017efficient}.
-As for simulations presented here, in order to remove the structure induced by the celiac disease status, we ..first keep only/select/restrict/retain.. controls from this cohort. 
-Secondly, in order to ..alleviate.. population structure, we ..keep only.. people from the UK. Thirdly, we further subset these British people based on deviation from the robust Mahalanobis distance ..on/for.. principal components. This 3-step filtering process results in a sample of 7102 individuals with minimal population structure (see supplementary notebook ``preprocessing''). 
-Note that we decided to ..alleviate.. population structure because it can affect the predictive performance of methods, which we will investigate in another study.
+As for simulations presented here, in order to remove the genetic structure induced by the celiac disease status, we first restrict our simulations to controls. 
+Then, we decided to remove population structure because it can affect the predictive performance of methods [REF, MARTINS?].
+In order to alleviate population structure, we keep people from the UK only and we further remove outliers based on the robust Mahalanobis distances computed using the first 10 principal components of remaining individuals. 
+This 3-step filtering process results in a sample of 7102 individuals with minimal population structure (see supplementary notebook ``preprocessing''). 
 
 
 \subsection{Simulations of phenotypes} \label{sec:simus}
 
-In order to simulate phenotypes, we use the Liability Threshold Model (LTM) with a prevalence of 30\% \cite[]{falconer1965inheritance}. We vary different parameters: the number of chromosomes used (either all 22 chromosomes or only chromosome 6), the size of the training set ($\{1000, 2000, \dots, 6000\}$), the number of causal variants and their location (30, 300 or 3000 anywhere on the genome or 30 only in the HLA region), the heritability (50\% or 80\%), the distribution of effects associated with causal SNPs (Normal or Laplace), and the model used to generate the genetic ..part/component/term.. of the phenotypes (a ``simple'' model with only linear effects, and a ``fancy'' model which combines linear, dominant and ..interaction/interaction-type.. effects).
-For the ``simple'' model, we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights (generated with a Gaussian or a Laplace distribution), $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). 
+In order to simulate phenotypes, we use the Liability Threshold Model (LTM) with a prevalence of 30\% \cite[]{falconer1965inheritance}. We vary different parameters: the number of chromosomes used (either all 22 chromosomes or only chromosome 6), the size of the training set ($\{1000, 2000, \dots, 6000\}$), the number of causal variants and their location (30, 300 or 3000 anywhere on the genome or 30 only in the HLA region), the heritability (50\% or 80\%), the distribution of effects associated with causal SNPs (Normal or Laplace). We also use two different models to compute liability scores: a ``simple'' model with linear effects only, and a ``fancy'' model which combines linear, dominant and interaction-type effects.
+For the ``simple'' model, we compute $$y_i = \sum_{j\in E_\text{causal}} w_j \cdot \widetilde{G_{i,j}}$$ where $w_j$ are weights generated with a Gaussian or a Laplace distribution, $G_{i,j}$ is the allele count of individual $i$ for SNP $j$ and $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs). 
 For the ``fancy'' model, we separate the causal SNPs in three equal sets $E_\text{causal}^{(1)}$, $E_\text{causal}^{(2)}$ 
 and $E_\text{causal}^{(3)}$ ($E_\text{causal}^{(3)}$ is further separated in two equal sets, $E_\text{causal}^{(3.1)}$ and $E_\text{causal}^{(3.2)}$). 
 We then compute $$y_i = \underbrace{\sum_{j\in E_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in E_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|E_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} G_{i,j_2}}}_\text{interaction}$$ 
 where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $E_\text{causal}^{(q)}=\left\{e_k^{(q)},~k \in \left\{1, \ldots, \left|E_\text{causal}^{(q)}\right|\right\}\right\}$. 
-Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still ..display/have.. a marginal effect. 
-For both models, the ..$y_i$/values of $y_i$.. are then standardized to make sure they have a variance exactly equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$, where $\epsilon \sim N(0, 1 - h^2)$.
+Note that for the interaction part of the model, we scale interactions, not the raw allele counts, so that corresponding SNPs still have a marginal effect. 
+For both models, the values of $y_i$ are then standardized so that they have a variance equal to the desired heritability $h^2$ and we further add some environmental noise $\epsilon_i$ to $y_i$, where $\epsilon \sim N(0, 1 - h^2)$.
 
 
-We ..make/construct/design/implement/work with.. 3 different simulation scenarios, summarized in table \ref{tab:simus}. 
-Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes) and a training set of size 6000. It compares all methods described in section \ref{sec:methods} ..on/for/along/in relation to.. all other combinations of parameters in 100 simulations (i.e.\ 5 times more than in \cite{zhou2013polygenic}). Note that the T-Trees method is compared on only 5 simulations and an heritability of 80\%, which aims at quickly discarding this method that can require more than one hour of computation for a single simulation only. 
-Scenario \textnumero2 consists of 100 simulations comparing the ``logit-simple'' and the C+T methods on a dataset composed of chromosome 6 only. Reducing the number of SNPs aims at increasing the polygenicity of the simulated models and at ..virtually/artificially.. increasing the sample size \cite[]{dudbridge2013power}. For this scenario, we use only the additive (``simple'') model, but continue to compare all previous variations of the other parameters.
-Finally, scenario \textnumero3 reuses the whole dataset but this time varying the size of the training set in order to assess how the sample size affects predictive performance of the PRS and the ``logit-simple'' methods. 100 simulations are run using 300 causal SNPs anywhere on the genome. 
+We implement 3 different simulation scenarios, summarized in table \ref{tab:simus}. 
+Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes) and a training set of size 6000. 
+It compares all methods described in section \ref{sec:methods}; for each combination of the remaining parameters, results are based on 100 simulations (i.e.\ 5 times more than in \cite{zhou2013polygenic}). 
+However, comparison results for T-Trees relies on 5 simulations only (and an heritability of 80\%) because this method can require several hours of computation for a single simulation only. 
+Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only. Reducing the number of SNPs aims at increasing the polygenicity (the proportion of causal SNPs) of the simulated models and at virtually increasing the sample size \cite[]{dudbridge2013power}. 
+For this scenario, we use only the additive (``simple'') model, but continue to compare all previous variations of the other parameters.
+Finally, scenario \textnumero3 reuses the whole dataset but this time varying the size of the training set in order to assess how the sample size affects predictive performance of methods. A total of 100 simulations are run using 300 causal SNPs anywhere on the genome. 
 
 
 \subsection{Predictive performance measures}\label{sec:auc}
@@ -158,13 +166,13 @@ Finally, scenario \textnumero3 reuses the whole dataset but this time varying th
 In this study, we use two different measures of predictive accuracy. 
 First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction,hanley1982meaning,lusted1971signal}. In the case of our study, the AUC is the probability that a PRS of a case is greater than the PRS of a control.
 This measure indicates the extent to which we can distinguish between cases and controls using PRSs.
-As a second measure, the partial AUC for specificities between 90\% and 100\% is also reported \cite[]{dodd2003partial,mcclish1989analyzing}. This measure is similar to the AUC, but focuses on high specificities (i.e.\ discarding most of the healthy population as being diseased), which is often the most useful part of the ROC curve in clinical settings. 
+As a second measure, the partial AUC for specificities between 90\% and 100\% is also reported \cite[]{dodd2003partial,mcclish1989analyzing}. This measure is similar to the AUC, but focuses on high specificities, which is the most useful part of the ROC curve in clinical settings. 
 
 %Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
 
 \subsection{Methods compared} \label{sec:methods}
 
-In this study, we compare three different types of methods: the C+T method, the T-Trees method and a penalized logistic regression.
+In this study, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression.
 
 The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of a Genome-Wide Associations Studies (GWAS), referred to as summary statistics.
 For the C+T method, a coefficient of regression is learned independently for each SNP along with a corresponding p-value (the GWAS part). 
