@@ -217,15 +217,19 @@ All the code used in this paper along with results such as figures and tables, a
 
 \subsection{Maximum AUCs}
 
+[REFAIRE OU METTRE AUTRE PART]
 When reporting results, we use estimates of maximum achievable AUC values for the simulations: 84\% (94\%) for heritabilities of 50\% (80\%) based on three estimations (see Supplementary Materials). Note that for the simulations we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
 
-\subsection{Scenario \textnumero1 -- main methods}
+\subsection{Comparison between C+T and ``logit-simple'' methods}
 
-In scenario \textnumero1, we compared our penalized logistic regression (``logit-simple'') with the C+T method (``PRS'') on the whole genome (Table \ref{tab:simus}). 
-Using the penalized logistic regression, we report AUCs greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, which is not obtained by the upper bound of the C+T method in any of the scenarios (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
-The penalized logistic regression consistently provides better predictive performance than the C+T method for all disease architectures tested, excepted sometimes when we simulate 3000 causals SNPs anywhere on the genome, a case where all methods rarely exceeds 65\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
-In the case where there are correlations between predictors (i.e.\ when we simulate 30 SNPs in the HLA region), the ``logit-simple'' method performs particularly ..better.. than the ``PRS-max'' one, with a mean AUC of 92.5\% versus 83\%, for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
-We also report that the choice of the threshold of inclusion of SNPs in the C+T method can impact its performance greatly, for example dropping from an AUC of 90\% to less than 60\% when including all SNPs passing the clumping phase in a model with only 30 causal SNPs, or dropping from 60\% to a random predictor (AUC of 50\%) when including only GWAS-significant SNPs in a model with 3000 causal SNPs (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}). 
+We compared the penalized logistic regression (``logit-simple'') with the C+T method (``PRS'') using whole-genome simulations of scenario \textnumero1 (Table \ref{tab:simus}).
+Penalized logistic regression provides AUC greater than 93\% for some disease architectures, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T method are always lower than 90\% (Figures \ref{fig:main-AUC-logit}). This situation occurs when simulating 30 causal SNPs in a linear fashion with an heritability of 80\%.
+Moreover, the penalized logistic regression consistently provides better predictive performance than the C+T method for all disease architectures tested, excepted in simulations with 3000 causal SNPs anywhere. Yet, these are cases where all methods rarely exceeds 60\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
+
+Method ``logit-simple'' provides particularly higher predictive performance than ``PRS-max'' where there are correlations between predictors, i.e.\ when we simulate 30 SNPs in the HLA region.
+In this situation, the mean AUC reaches 92.5\% with the ``logit-simple'' and 83\% with the ``PRS-max'', for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
+
+In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can impact its predictive performance greatly. For example, AUC ranges from less than 60\% to 90\% in a model with only 30 causal SNPs (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}). 
 
 \subsection{``Fancy'' methods and model}
 
