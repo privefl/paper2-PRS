@@ -13,7 +13,8 @@ plot_remains <- function(K = 5, which_remains = K, size = 20) {
     Set = c("test", paste0("train-", 1:K), "test", "train"),
     value = c(20, rep(80 / K, K), 20, 80)
   ) %>%
-    ggplot(aes(nest, value, fill = Set)) +
+    ggplot(aes(nest, value, fill = Set, 
+               label = paste0(value, "%"))) +
     geom_col(width = 1, color = "black") +
     coord_polar("y", start = 0, direction = -1) +
     scale_fill_manual(values = c(col_outer, col_inner[ind])) +
@@ -21,5 +22,8 @@ plot_remains <- function(K = 5, which_remains = K, size = 20) {
 }
 
 plot_remains(5)
-plot_remains(5, size = 25)
+plot_remains(5, size = 30)
 
+
+plot_remains(5) +
+  geom_text(position = position_stack(vjust = 0.5))
