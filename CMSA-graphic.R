@@ -25,5 +25,18 @@ plot_remains(5)
 plot_remains(5, size = 30)
 
 
-plot_remains(5) +
+p1 <- plot_remains(5) +
   geom_text(position = position_stack(vjust = 0.5))
+print(p1)
+ggsave("../thesis-docs/figures/CMSA-explained1.svg", p1,
+       scale = 1/90, width = 740, height = 580)
+
+source("CMSA-inside.R")
+ggsave("../thesis-docs/figures/CMSA-explained1.svg", p2,
+       scale = 1/90, width = 800, height = 620)
+
+cowplot::plot_grid(p1, p2, align = "hv", ncol = 1,
+                   labels = LETTERS[1:2], 
+                   label_size = 25,
+                   scale = 0.95)
+ggsave("figures/CMSA-explained.pdf", scale = 1/90, width = 760, height = 1000)
