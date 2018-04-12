@@ -7,6 +7,11 @@
 #                         return.all = TRUE)
 # )
 
+myggplot <- function(..., coeff = 1) {
+  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff) +
+    theme(strip.text.x = element_text(size = rel(2)),
+          strip.text.y = element_text(size = rel(2)))
+} 
 
 # tmp <- logit[[2]]
 # saveRDS(tmp, "one-logit-CMSA.rds")

@@ -32,7 +32,7 @@ ggsave("../thesis-docs/figures/CMSA-explained1.svg", p1,
        scale = 1/90, width = 740, height = 580)
 
 source("CMSA-inside.R")
-ggsave("../thesis-docs/figures/CMSA-explained1.svg", p2,
+ggsave("../thesis-docs/figures/CMSA-explained2.svg", p2,
        scale = 1/90, width = 800, height = 620)
 
 cowplot::plot_grid(p1, p2, align = "hv", ncol = 1,
