@@ -17,13 +17,14 @@ myggplot <- function(..., coeff = 1) {
 # saveRDS(tmp, "one-logit-CMSA.rds")
 tmp <- readRDS("one-logit-CMSA.rds")
 ind.min <- which.min(tmp$loss.val)
+ind <- seq(2, length(tmp$lambda), by = 2)
 
 library(tidyverse)
 
 p2 <- bind_rows(
-  data_frame(lambda = tmp$lambda, loss = tmp$loss.val, 
+  data_frame(lambda = tmp$lambda[ind], loss = tmp$loss.val[ind], 
              Dataset = "Remaining fold"),
-  data_frame(lambda = tmp$lambda, loss = tmp$loss,
+  data_frame(lambda = tmp$lambda[ind], loss = tmp$loss[ind],
              Dataset = "Training folds")
 ) %>%
   myggplot(coeff = 1.2) +

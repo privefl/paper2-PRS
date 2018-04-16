@@ -80,8 +80,7 @@ barplot_causal_one <- function(results) {
   
   results %>%
     barplot_causal() +
-    geom_hline(yintercept = 0.94, linetype = 3, color = "blue") +
-    facet_grid(par.dist ~ .)
+    geom_hline(yintercept = 0.94, linetype = 3, color = "blue")
 }
 ```
 
@@ -104,7 +103,6 @@ compare_logit <- function(results, with_method) {
       geom_boxplot(aes_string("par.causal", y, color = "method", 
                               fill = "method"), alpha = 0.3) + 
       theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
-      # facet_grid(par.model ~ par.dist) +
       labs(x = "Causal SNPs (number and location)", y = ylab, 
            fill = "Method", color = "Method") +
       theme(legend.position = "none") +
@@ -115,7 +113,7 @@ compare_logit <- function(results, with_method) {
   
   p1 <- results.summary %>%
     barplot_causal_one() +
-    facet_grid(par.model ~ par.dist) +
+    facet_grid(par.model ~ .) +
     labs(y = sprintf("Mean of %d AUCs", nsimu))
   
   p2 <- cowplot::plot_grid(
@@ -229,7 +227,7 @@ results34 %>%
   geom_hline(aes(yintercept = 0.94), linetype = 3, color = "blue") +
   geom_boxplot(aes(method, AUC, fill = simu, color = simu), alpha = 0.3) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
-  facet_grid(par.dist ~ par.causal) +
+  facet_grid(. ~ par.causal) +
   scale_fill_brewer(type = "qual", palette = 2) +
   scale_color_brewer(type = "qual", palette = 2) + 
   labs(x = "Method")
@@ -264,7 +262,6 @@ results35.summary %>%
   geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, 
                     ymax = AUC_mean + 2 * AUC_boot), 
                 size = 1.5, width = 0) +
-  facet_grid(. ~ par.dist) +
   scale_x_continuous(breaks = 1:6 * 1000, minor_breaks = NULL) + 
   scale_y_continuous(minor_breaks = 0:20 / 20) +
   scale_color_manual(values = methods.color) +
