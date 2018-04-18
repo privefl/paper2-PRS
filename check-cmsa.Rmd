@@ -58,16 +58,14 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
 
 ```{r}
 library(bigsnpr)
-celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
+celiac2 <- snp_attach("backingfiles/celiacQC.rds")
 CHR <- celiac2$map$chromosome
 POS <- celiac2$map$physical.pos
-(G <- celiac2$genotypes)
-(G2 <- big_attach("backingfiles/celiacQC_sub1_tripled1.rds"))
+G <- celiac2$genotypes
 
-covar.all <- readRDS("backingfiles/PCA2.rds")$u
+covar.all <- readRDS("backingfiles/PCA.rds")$u
 
 n <- nrow(G)
-ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
 ```
 
 ### Simulation of phenotypes
@@ -115,57 +113,6 @@ get_pheno <- function(
 }
 ```
 
-### Scenario n°1 (with T-Trees)
-
-```{r}
-params.grid1 <- expand.grid(
-  n.train    = 6000,
-  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
-  par.dist   = c("gaussian", "laplace"), 
-  par.h2     = 0.8, 
-  par.model  = c("simple", "fancy"),
-  num.simu   = 1:5,
-  stringsAsFactors = FALSE
-) 
-```
-
-```{r, eval=TRUE}
-if (!dir.exists("results1")) dir.create("results1")
-
-for (i in rows_along(params.grid1)) {
-  
-  res.file <- paste0("results1/simu_", i, ".rds")
-  if (file.exists(res.file)) next
-  
-  params <- params.grid1[i, ]
-  par.causal <- params[["par.causal"]][[1]]
-  
-  # Simulate phenotypes
-  pheno.all <- get_pheno(
-    G,    
-    h2 = params[["par.h2"]], 
-    M = as.integer(par.causal[1]), 
-    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
-    effects.dist = params[["par.dist"]], 
-    model = params[["par.model"]], 
-    K = 0.3                 
-  )
-  
-  # Split in training/test sets
-  ind.train <- sort(sample(n, size = params[["n.train"]]))
-  ind.test <- setdiff(1:n, ind.train)
-    
-  # Get results from all methods
-  res <- bind_rows(
-    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
-    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
-    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
-    ttrees(TTree, "backingfiles/ttrees", pheno.all, ind.train, ind.test, n.trees = 100)
-  )
-  params[["res"]] <- list(res)
-  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
-}
-```
 
 ### Scenario n°1 (without T-Trees)
 
