@@ -165,6 +165,31 @@ ttrees <- function(TTree, file.base, pheno.all, ind.train, ind.test,
 }
 ```
 
+### Logistic regression with biglasso
+
+```{r}
+logit.biglasso <- function(G3, pheno.all, covar.all, ind.train, ind.test) {
+  
+  timing <- system.time({
+    
+    biglasso <- biglasso(G3, pheno.all, ind.train, ncores = nb_cores(),
+                         penalty = "enet", family = "binomial", alpha = 0.5)
+    
+    preds <- 1 / (1 + exp(-predict(biglasso, G3, ind.test)))
+  })[3]
+  
+  aucs <- apply(preds, 2, bigstatsr::AUC, target = pheno.all[ind.test])
+  ind.max <- which.max(aucs)
+  
+  tibble(
+    method   = "biglasso", 
+    eval     = list(cbind(preds[, ind.max], pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(biglasso$beta[, ind.max] != 0)
+  )
+}
+```
+
 ## Simulations
 
 ### Data
@@ -435,3 +460,74 @@ for (i in rows_along(params.grid5)) {
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
+
+### Scenario n°1 (comparison with biglasso)
+
+```{r}
+library(biglasso)
+library(Matrix)
+```
+
+```{r, eval=FALSE}
+G3 <- big.matrix(nrow(G), ncol(G) + ncol(covar.all),
+                 backingfile = "G-PC", 
+                 backingpath = "backingfiles")
+big_apply(G, function(X, ind) {
+  G3[, ind] <- X[, ind]
+  NULL
+}, a.combine = 'c')
+G3[, ncol(G) + cols_along(covar.all)] <- covar.all
+```
+
+```{r}
+G3 <- attach.big.matrix("backingfiles/G-PC.desc")
+```
+
+```{r}
+params.grid7 <- expand.grid(
+  n.train = 6000,
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.8), 
+  par.model  = c("simple"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r, eval=TRUE}
+if (!dir.exists("results7")) dir.create("results7")
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file <- paste0("results7/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid7[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
+    logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
+  )
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
+

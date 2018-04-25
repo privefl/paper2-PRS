@@ -18,9 +18,9 @@ options(width = 110)
 ```{r, message=FALSE}
 library(tidyverse)
 
-methods.color <- setNames(scales::hue_pal()(6), 
+methods.color <- setNames(c(scales::hue_pal()(6), "black"), 
                           c("logit-simple", "PRS-max", "PRS-stringent",
-                            "T-Trees", "logit-triple", "PRS-all")) 
+                            "T-Trees", "logit-triple", "PRS-all", "biglasso")) 
 ```
 
 ```{r}
@@ -357,4 +357,19 @@ myggplot(results35.summary, aes(n.train, AUC_mean, color = method, linetype = me
 
 ggsave("figures/main-AUC-ntrain.pdf", scale = 1/100, width = 1050, height = 800)
 ```
+
+### Comparison with biglasso
+
+```{r}
+results7 <- list.files("results7", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+```
+
+```{r}
+compare_logit(results7, "biglasso")
+
+ggsave("figures/supp-biglasso.pdf", scale = 1/100, width = 1600, height = 1000)
+```
+
 
