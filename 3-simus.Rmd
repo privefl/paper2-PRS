@@ -92,14 +92,15 @@ PRS <- function(G, infos.chr, infos.pos,
 ### Logistic regression
 
 ```{r}
-logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
+logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test,
+                       method = "logit-simple", alpha = 0.5) {
   
   timing <- system.time({
     
     cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = NCORES)
+                               alpha = alpha, ncores = NCORES)
     
     preds <- rowMeans(
       predict(cmsa.logit, X = G, ind.row = ind.test, 
@@ -524,8 +525,50 @@ for (i in rows_along(params.grid7)) {
     
   # Get results from all methods
   res <- bind_rows(
-    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test),
     logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
+  )
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
+
+### Scenario n°1 (comparison of different $\alpha$)
+
+```{r, eval=TRUE}
+if (!dir.exists("results8")) dir.create("results8")
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file <- paste0("results8/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid7[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
+  ind.test <- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res <- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = "logit-simple-enet-ridge", alpha = 0.001),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = "logit-simple",            alpha = 0.5),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = "logit-simple-lasso",      alpha = 1)
   )
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)

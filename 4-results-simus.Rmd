@@ -372,4 +372,16 @@ compare_logit(results7, "biglasso")
 ggsave("figures/supp-biglasso.pdf", scale = 1/100, width = 1600, height = 1000)
 ```
 
+### Comparison of different alpha values
 
+```{r}
+results8 <- list.files("results8", full.names = TRUE) %>%
+  map_dfr(~readRDS(.x)) %>%
+  format_results()
+```
+
+```{r, fig.asp=0.65, out.width="95%", fig.width=16}
+compare_logit(results8, c("logit-simple-enet-ridge", "logit-simple-lasso"))
+
+ggsave("figures/supp-alpha.pdf", scale = 1/100, width = 1600, height = 1000)
+```

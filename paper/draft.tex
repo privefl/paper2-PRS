@@ -56,7 +56,7 @@
 \begin{document}
 
 
-\title{Joint estimation of SNP effects improves the prediction of complex diseases // Predicting complex diseases: performance and robustness [OF NEW METHOD?]}
+\title{Highly efficient implementation of penalized models and their application to genetic risk prediction}
 \author{Florian Priv\'e\,$^{\text{ 1,}*}$, Hugues Aschard\,$^{\text{2}}$ and Michael G.B. Blum\,$^{\text{1,}*}$}
 
 
@@ -72,16 +72,17 @@
 \newpage
 
 \abstract{
-Polygenic Risk Scores (PRSs) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRSs can have a major public health impact, allowing for screening campaigns to identify high-genetic risk individuals for a given disease.  The most commonly used method to derive PRSs is called ``Clumping+Thresholding'' (C+T). It uses only univariate genome-wide association studies (GWAS) summary statistics, which makes it very suitable and fast. However, PRS rely on non-optimal heuristics to account for correlation and to reduce noise in the predictor. 
+Polygenic Risk Scores (PRSs) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. 
+PRSs might have a major public health impact, possibly allowing for screening campaigns to identify high-genetic risk individuals for a given disease.  The most commonly used method to derive PRSs is called ``Clumping+Thresholding'' (C+T). It uses only univariate genome-wide association studies (GWAS) summary statistics, which makes it very suitable and fast. However, these PRS rely on non-optimal heuristics. 
 
-In R package bigstatsr, we implemented a logistic regression model that provides a joint estimation of SNP effects. We used an efficient algorithm with new implementation tricks in order for this model to be used on huge datasets as large as the UK Biobank.
+In R package bigstatsr, we implemented linear and logistic regression models that can be used to jointly estimate SNP effects for computing PRS. We use an efficient algorithm with a new implementation in order for this model to be used on huge datasets.
 
-In this paper, we present a comprehensive comparative study of the C+T method, our penalized logistic regression and the T-Trees algorithm, which is a derivation of random forests. The penalized logistic regression consistently achieves higher predictive performance than the two other methods while being faster than the C+T method. 
+In this paper, we present a comprehensive comparative study of the C+T method, our penalized logistic regression and a derivation of random forests. The penalized logistic regression consistently achieves higher predictive performance than the two other methods while being faster than the C+T method. 
 Moreover, predictive performance of the C+T method is very sensitive to the threshold of inclusion of SNPs, whose optimal value depends on disease architecture. 
-The improvement in predictive performance is more pronounced when there are few effects located in nearby genomic regions with correlated SNPs, or when sample size is increasing. 
-When analyzing real SNP data from a case-control study,  penalized logistic regression provides an AUC of 89\% while the standard C+T method provides a smaller AUC of 82\%.
+The improvement in predictive performance is more pronounced when there are few effects located in nearby genomic regions with correlated SNPs, and with an increasing sample size. 
+When analyzing real SNP data from a case-control study for celiac disease, penalized logistic regression provides an AUC of 89\% while the standard C+T method provides a smaller AUC of 82\%.
 
-Instead of computing polygenic risk scores based on GWAS univariate summary statistics, we recommend to use penalized logistic regression as implemented in the R package bigstatsr to obtain more accurate polygenic risk scores when individual genotype data are available.\\
+[TOMOD] Instead of computing polygenic risk scores based on GWAS univariate summary statistics, we recommend to use penalized logistic regression as implemented in the R package bigstatsr to obtain more accurate polygenic risk scores when individual genotype data are available.\\
 
 \textbf{Contact:} \href{florian.prive@univ-grenoble-alpes.fr}{florian.prive@univ-grenoble-alpes.fr} \& \href{michael.blum@univ-grenoble-alpes.fr}{michael.blum@univ-grenoble-alpes.fr}\\
 \textbf{Supplementary information:}
@@ -95,7 +96,6 @@ Instead of computing polygenic risk scores based on GWAS univariate summary stat
 
 Polygenic Risk Scores (PRSs) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRSs are useful for different applications, such as testing polygenicity of a disease and finding a common genetic contribution between two diseases \cite[]{purcell2009common}. 
 Personalized medicine is another major application of PRSs. Personalized medicine envisions to use PRSs in screening campaigns in order to identify high-risk individuals for a given disease \cite[]{chatterjee2016developing}. As an example of practical application, targeting screening to men at higher polygenic risk could reduce the problem of overdiagnosis and lead to a better benefit-to-harm balance in screening for prostate cancer \cite[]{pashayan2015implications}. 
-Moreover, screening based on sequencing seems to make individuals positively change their health behavior, while neither causing patient anxiety nor depression \cite[]{vassy2017impact}.
 Yet, PRSs would have to show a high discriminative power between cases and controls in order to be used for helping in the diagnosis of diseases. 
 For example, for screening high-risk individuals and for presymptomatic diagnosis of the general population, it is suggested that the AUC must be greater than 75\% and 99\% respectively \cite[]{janssens2007impact}.
 
@@ -103,27 +103,27 @@ Many methods have been developed to predict disease status, or more generally an
 A commonly used method, called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') -- or even just PRS -- is used to derive PRSs from results of Genome-Wide Association Studies (GWASs) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. 
 This technique uses GWAS summary statistics only, which makes it very convenient to compute and also very fast.
 Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{lello2017accurate,yang2010common}. 
-Yet, the predictions resulting from LMM, known e.g.\ as ``gBLUP'', are not designed for binary traits such as a disease status and are not optimal in this setting \cite[]{abraham2013performance}. 
+Yet, models resulting from LMM, known e.g.\ as ``gBLUP'', are not optimal for predicting disease status based on genotypes \cite[]{abraham2013performance}. 
 Moreover, these methods and their derivatives are often computationally demanding, both in terms of memory and time requirements, which makes them unlikely to be used for prediction on very large datasets \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
-Finally, statistical learning methods have also been used to derive PRSs for complex human diseases by jointly estimating SNP effects. Such methods include logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2014exploiting,okser2014regularized,wei2009disease}.
+Finally, statistical learning methods have also been used to derive PRSs for complex human diseases by jointly estimating SNP effects. Such methods include joint logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2014exploiting,okser2014regularized,wei2009disease}.
 
-We recently developed two R packages, bigstatsr and bigsnpr, for efficiently analyzing large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr includes an efficient algorithm with new implementation tricks for computing sparse linear and logistic regressions on huge datasets as large as the UK Biobank \cite[]{bycroft2017genome}.
+We recently developed two R packages, bigstatsr and bigsnpr, for efficiently analyzing large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr includes an efficient algorithm with a new implementation for computing sparse linear and logistic regressions on huge datasets as large as the UK Biobank \cite[]{bycroft2017genome}.
 In this paper, we present a comprehensive comparative study of the C+T method, our implementation of penalized logistic regression and the T-Trees algorithm, a derivation of random forests that has shown high predictive performance \cite[]{botta2014exploiting}. 
-Note that in this comparison we do not include any LMM method for the reasons mentioned before and do not include any SVM method because it is expected to give similar results to logistic regression \cite[]{abraham2012sparsnp} [<- IN METHODS? MAIS BIEN AUSSI DE DIRE PQ TOT..].
+Note that in this comparison we do not include any LMM method for the reasons mentioned before and do not include any SVM method because it is expected to give similar results to logistic regression \cite[]{abraham2012sparsnp}.
 For the C+T model, we compare different thresholds of inclusion of SNPs.
-For the logistic regression, we include two novel approaches. 
+For the penalized logistic regression, we include two practical improvements. 
 First, we introduce a procedure that we call Cross-Model Selection and Averaging (CMSA) for automatically choosing the regularization parameter of the penalized logistic regression, which directly affects the number of SNPs included in the model. 
-We also show how to use feature engineering in order to capture not only linear effects, but also recessive and dominant effects.
+Secondly, we also show how to use feature engineering in order to capture not only linear effects, but also recessive and dominant effects.
 
 There have already been comparative studies on predicting human binary phenotypes based on genotype data. 
 \cite{abraham2013performance} showed that sparse penalized methods performed better than the standard C+T method and LMMs, for a wide-range of human diseases.
 \cite{zhou2013polygenic} used simulations on real genotypes of Australian individuals to show that a hybrid of linear mixed models and sparse regression models performed better in a range of sparse to polygenic disease architectures. 
 \cite{spiliopoulou2015genomic} investigated the effect of relatedness in prediction performance.
 \cite{ware2017heterogeneity} evaluated best practices for using the C+T method and found out that the optimal inclusion threshold is trait-dependent. 
-In this study, we particularly extend the work of \cite{abraham2013performance} by using a simulation framework similar but more extenstive than the one used in \cite{zhou2013polygenic}. 
+[TOMOD] In this study, we particularly extend the work of \cite{abraham2013performance} by using a simulation framework similar but more extenstive than the one used in \cite{zhou2013polygenic}. 
 In order to make our comparison as comprehensive as possible, we compare different disease architectures by varying the number, size and location of causal effects as well as the heritability. We also compare different models for generating liability scores, one with only linear effects, and one which combines linear, dominant and interaction-type effects.
 
-First, we quickly discard T-Trees because this method shows lower predictive performance as compared to other methods, while being computationally demanding.
+[TOMOD] First, we quickly discard T-Trees because this method shows lower predictive performance as compared to other methods, while being computationally demanding.
 Then, we show that the penalized logistic regression consistently achieves higher predictive performance while being faster than the C+T method, whereas predictive performance of the C+T method is very sensitive to the threshold of inclusion of SNPs, depending on the disease architecture, as shown in \cite{ware2017heterogeneity}.
 
 
@@ -136,7 +136,7 @@ Then, we show that the penalized logistic regression consistently achieves highe
 
 We use real genotypes of European individuals from a case-control celiac disease study \cite[]{dubois2010multiple}. The composition of this dataset is presented in table \ref{tab:celiac-data}.
 Details of quality control and imputation for this dataset are available in \cite{prive2017efficient}.
-As for simulations presented here, in order to remove the genetic structure induced by the celiac disease status, we first restrict our simulations to controls. 
+For simulations presented later, we first restrict the dataset to controls in order to remove the genetic structure induced by the celiac disease status. 
 Then, we decided to remove population structure because it can affect the predictive performance of methods \cite[]{martin2017human}.
 In order to alleviate population structure, we keep people from the UK only and we further remove outliers based on the robust Mahalanobis distances computed using the first 10 principal components of remaining individuals. 
 This 3-step filtering process results in a sample of 7102 individuals with minimal population structure (see supplementary notebook ``preprocessing''). 
@@ -177,19 +177,18 @@ When reporting results of AUC, we use estimates of maximum achievable AUC values
 
 In this study, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression.
 
-The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of a Genome-Wide Associations Study (GWAS), referred to as summary statistics.
-In the GWAS, a coefficient of regression (estimated effect size) is learned independently for each SNP along with a corresponding p-value. 
+The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of a Genome-Wide Associations Study (GWAS).
+In the GWAS, a coefficient of regression (i.e.\ the estimated effect size $\hat\beta_j$) is learned independently for each SNP $j$ along with a corresponding p-value $p_j$. 
 The SNPs are first clumped (C) so that there remain only loci that are weakly correlated with one another, which form a set of SNPs denoted $S_\text{clumping}$. 
 Then, thresholding (T) consists in removing SNPs with p-values larger than a threshold $p_T$ to be determined. 
 Finally, a PRS is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients: $$\rm{PRS}_i = \sum_{\substack{j \in S_\text{clumping} \\ p_j~<~p_T}} \hat\beta_j \cdot G_{i,j}$$ where $\hat\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS. In this study, we report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb. 
 
-For the C+T method, we report three different scores of prediction: one including all the SNPs (remaining after clumping), one including only SNPs that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$), and one that maximizes the AUC for these two thresholds and a sequence of 100 values of thresholds ranging from $10^{-0.1}$ to $10^{-100}$ and equally spaced on the log-log-scale (Table \ref{tab:thr}). 
+For the C+T method, we report three different scores of prediction: one including all the SNPs remaining after clumping (``PRS-all''), one including only SNPs remaining after clumping and that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$, ``PRS-stringent''), and one that maximizes the AUC (``PRS-max'') for these two thresholds ($0$ and $5 \cdot 10^{-8}$) and a sequence of 100 values of thresholds ranging from $10^{-0.1}$ to $10^{-100}$ and equally spaced on the log-log-scale (Table \ref{tab:thr}). 
 As we report the optimal threshold based on the test set, the corresponding AUC value is an upper bound of the AUC for the C+T method.
-We call these three reported scores respectively ``PRS-all'', ``PRS-stringent'' and ``PRS-max'' in the results.
 
 T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests \cite[]{breiman2001random} that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data \cite[]{botta2014exploiting}. We use the same parameters as reported in Table 4 of \cite{botta2014exploiting}, except that we use 100 trees instead of 1000 because because using 1000 trees provides a minimal increase of AUC while requiring a disproportionately long processing time (e.g.\ AUC of 81.5\% instead of 81\%, data not shown). %We call this method ``T-Trees'' in the results.
 
-Finally, for the penalized logistic regression, we solve: $$\arg\!\min_{\beta_0,~\beta}(\lambda, \alpha)\left\{  \underbrace{ -\sum_{i=1}^n \left( y_i \log\left(p_i\right) + (1 - y_i) \log\left(1 - p_i\right) \right) }_\text{Loss function}   +   \underbrace{ \lambda \left((1-\alpha)\frac{1}{2}\|\beta\|_2^2 + \alpha \|\beta\|_1\right) }_\text{Penalization}  \right\}$$ where $p_i=1/\left(1+\exp\left(-(\beta_0 + x_i^T\beta)\right)\right)$, $x$ is denoting the genotypes and covariables (e.g.\ principal components), $y$ is the disease status we want to predict and $\lambda$ is a regularization parameter that needs to be determined. 
+Finally, for the penalized logistic regression, we solve: $$\arg\!\min_{\beta_0,~\beta}(\lambda, \alpha)\left\{  \underbrace{ -\sum_{i=1}^n \left( y_i \log\left(p_i\right) + (1 - y_i) \log\left(1 - p_i\right) \right) }_\text{Loss function}   +   \underbrace{ \lambda \left((1-\alpha)\frac{1}{2}\|\beta\|_2^2 + \alpha \|\beta\|_1\right) }_\text{Penalization}  \right\}$$ where $p_i=1/\left(1+\exp\left(-(\beta_0 + x_i^T\beta)\right)\right)$, $x$ is denoting the genotypes and covariables (e.g.\ principal components), $y$ is the disease status we want to predict, $\lambda$ and $alpha$ are two regularization parameters that need to be chosen. 
 Different regularizations can be used to prevent overfitting, among other benefits: the L2-regularization (``ridge'', \cite{hoerl1970ridge}) shrinks coefficients and is ideal if there are many predictors drawn from a Gaussian distribution (corresponds to $\alpha = 0$ in the previous equation);
 the L1-regularization (``lasso'', \cite{tibshirani1996regression}) forces some of the coefficients to be equal to zero and can be used as a means of variable selection, leading to sparse models (corresponds to $\alpha = 1$); 
 the L1- and L2-regularization (``elastic-net'', \cite{zou2005regularization}) is a compromise between the two previous penalties and is particularly useful in the $m \gg n$ situation ($m$: number of SNPs), or any situation involving many correlated predictors (corresponds to $0 < \alpha < 1$) \cite[]{friedman2010regularization}. In this study, we use the elastic-net regularization with $\alpha = 0.5$.%, without trying to tune (e.g.\ by grid-search and cross-validation) the value of this hyper-parameter $\alpha$.
@@ -217,7 +216,7 @@ All the code used in this paper along with results such as figures and tables, a
 We compared the penalized logistic regression (``logit-simple'') with the C+T method (``PRS'') using whole-genome simulations of scenario \textnumero1 (Table \ref{tab:simus}).
 
 When there are 30 causal SNPs and 80\% of heritability, penalized logistic regression provides AUC greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T method range between 83\% and 90\% (Figure \ref{fig:main-AUC-logit}). 
-Moreover, the penalized logistic regression consistently provides better predictive performance than the C+T method for all disease architectures tested, excepted in simulations with 3000 causal SNPs, which are cases where all methods hardly exceed 60\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
+Moreover, the penalized logistic regression consistently provides better predictive performance than the C+T method for all disease architectures tested, excepted in some simulations with 3000 causal SNPs, which are cases where all methods hardly exceed 60\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}). 
 
 Method ``logit-simple'' provides particularly higher predictive performance than ``PRS-max'' where there are correlations between predictors, i.e.\ when we simulate 30 SNPs in the HLA region.
 In this situation, the mean AUC reaches 92.5\% with the ``logit-simple'' and 83\% with the ``PRS-max'', for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
@@ -274,9 +273,10 @@ logit-triple & 0.892 (0.000488) & 0.0429 (0.000174) & 4470 (80.6) & 141 (1.85) \
 \section{Discussion}
 
 In this comparative study, we propose penalized logistic regressions as a replacement for the widely used C+T method for computing polygenic risk scores when individual genotype data are available. 
-We show that jointly estimating SNP effects using efficient penalized logistic regressions enables to achieve higher predictive performance, as reported in a previous study \cite[]{abraham2013performance}. Indeed, when disease architecture and sample size allow for high predictive performance (say AUC greater than 85\%), ``logit-simple'' provides higher predictive performance than the widely-used C+T method, nearly reaching optimal AUC values, which is encouraging for using polygenic risk scores in clinical settings.
+We show that jointly estimating SNP effects using efficient penalized logistic regressions can achieve higher predictive performance, as reported in \cite{abraham2013performance}. Indeed, when disease architecture and sample size allow for high predictive performance (say AUC greater than 85\%), ``logit-simple'' provides higher predictive performance than the widely-used C+T method, nearly reaching optimal AUC values, which is encouraging for using polygenic risk scores in clinical settings.
 The C+T method is widely used because it is simple and can use summary statistics already learned from large genotype data, which is not yet the case for our penalized logistic regressions. 
-However, in order to accurately predict disease status for clinical interventions, best possible predictive methods should be used. The logistic regression we present in this paper could be used on data as large as biobank datasets because it is very efficient in both memory and computation time.
+However, in order to accurately predict disease status for clinical interventions, best possible predictive methods should be used. 
+The penalized logistic regression we present in this paper could be used on data as large as biobank datasets because it is both very memory- and computation-efficient.
 
 As for the C+T method itself, we recall that we report the maximum AUC of 102 thresholds, a threshold that should normally be learned on the training set only. The choice of this threshold is very important as it can greatly impact the predictive performance of the method \cite[]{ware2017heterogeneity}. 
 On the contrary, in the penalized logistic regression presented here, we remove the choice of the regularization parameter with a procedure that we call Cross-Model Selection and Averaging (CMSA) while keeping high predictive performance [TODO: COMPARAISON AVEC LE MAX DE BIGLASSO]. Usually, cross-validation is used to assess the best value for the hyper-parameter and then the model is train again with this particular hyper-parameter value \cite[]{Hastie2008,wei2013large}. Yet, as the value of $\lambda$ depends on the sample size and doing cross-validation and retraining is computationally demanding, we prefer to use CMSA when there is a model to choose from a regularization path, with the possibility of adding an early stopping criterion to fasten the whole procedure.
