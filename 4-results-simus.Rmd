@@ -366,7 +366,7 @@ results7 <- list.files("results7", full.names = TRUE) %>%
   format_results()
 ```
 
-```{r}
+```{r, fig.asp=0.65, out.width="95%", fig.width=16}
 compare_logit(results7, "biglasso")
 
 ggsave("figures/supp-biglasso.pdf", scale = 1/100, width = 1600, height = 1000)

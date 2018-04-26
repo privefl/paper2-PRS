@@ -16,6 +16,7 @@ options(width = 85)
 ```{r, message=FALSE}
 library(tidyverse)
 library(glue)
+NCORES <- 6
 ```
 
 Each method's function returns a tibble (data frame) with 4 columns:
@@ -45,7 +46,7 @@ PRS <- function(G, infos.chr, infos.pos,
     gwas.train <- big_univLogReg(
       G, pheno.all[ind.train], ind.train = ind.train, 
       covar.train = covar.all[ind.train, , drop = FALSE], 
-      ncores = nb_cores()
+      ncores = NCORES
     )
     gwas.train.gc <- snp_gc(gwas.train)
     
@@ -57,7 +58,7 @@ PRS <- function(G, infos.chr, infos.pos,
                              size = 500,
                              is.size.in.bp = TRUE,
                              infos.pos = infos.pos,
-                             ncores = nb_cores())
+                             ncores = NCORES)
     
     # PRS
     thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
@@ -98,7 +99,7 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
     cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = nb_cores())
+                               ncores = NCORES)
     
     preds <- rowMeans(
       predict(cmsa.logit, X = G, ind.row = ind.test, 
@@ -172,7 +173,7 @@ logit.biglasso <- function(G3, pheno.all, covar.all, ind.train, ind.test) {
   
   timing <- system.time({
     
-    biglasso <- biglasso(G3, pheno.all, ind.train, ncores = nb_cores(),
+    biglasso <- biglasso(G3, pheno.all, ind.train, ncores = NCORES,
                          penalty = "enet", family = "binomial", alpha = 0.5)
     
     preds <- 1 / (1 + exp(-predict(biglasso, G3, ind.test)))

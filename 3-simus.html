@@ -129,7 +129,8 @@ $(document).ready(function () {
 <div id="methods-functions" class="section level2">
 <h2>Methods’ functions</h2>
 <pre class="r"><code>library(tidyverse)
-library(glue)</code></pre>
+library(glue)
+NCORES &lt;- 6</code></pre>
 <p>Each method’s function returns a tibble (data frame) with 4 columns:</p>
 <ol style="list-style-type: decimal">
 <li>the name of the method,</li>
@@ -153,7 +154,7 @@ library(glue)</code></pre>
     gwas.train &lt;- big_univLogReg(
       G, pheno.all[ind.train], ind.train = ind.train, 
       covar.train = covar.all[ind.train, , drop = FALSE], 
-      ncores = nb_cores()
+      ncores = NCORES
     )
     gwas.train.gc &lt;- snp_gc(gwas.train)
     
@@ -165,7 +166,7 @@ library(glue)</code></pre>
                              size = 500,
                              is.size.in.bp = TRUE,
                              infos.pos = infos.pos,
-                             ncores = nb_cores())
+                             ncores = NCORES)
     
     # PRS
     thrs &lt;- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
@@ -204,7 +205,7 @@ library(glue)</code></pre>
     cmsa.logit &lt;- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = nb_cores())
+                               ncores = NCORES)
     
     preds &lt;- rowMeans(
       predict(cmsa.logit, X = G, ind.row = ind.test, 
@@ -265,6 +266,29 @@ ttrees &lt;- function(TTree, file.base, pheno.all, ind.train, ind.test,
     eval     = list(preds[match(ind.test - 1, preds[[1]]), 2:3]),
     timing   = timing,
     nb.preds = sum(read.table(file.vim)$V2 != 0)
+  )
+}</code></pre>
+</div>
+<div id="logistic-regression-with-biglasso" class="section level3">
+<h3>Logistic regression with biglasso</h3>
+<pre class="r"><code>logit.biglasso &lt;- function(G3, pheno.all, covar.all, ind.train, ind.test) {
+  
+  timing &lt;- system.time({
+    
+    biglasso &lt;- biglasso(G3, pheno.all, ind.train, ncores = NCORES,
+                         penalty = &quot;enet&quot;, family = &quot;binomial&quot;, alpha = 0.5)
+    
+    preds &lt;- 1 / (1 + exp(-predict(biglasso, G3, ind.test)))
+  })[3]
+  
+  aucs &lt;- apply(preds, 2, bigstatsr::AUC, target = pheno.all[ind.test])
+  ind.max &lt;- which.max(aucs)
+  
+  tibble(
+    method   = &quot;biglasso&quot;, 
+    eval     = list(cbind(preds[, ind.max], pheno.all[ind.test])),
+    timing   = timing,
+    nb.preds = sum(biglasso$beta[, ind.max] != 0)
   )
 }</code></pre>
 </div>
@@ -512,6 +536,75 @@ for (i in rows_along(params.grid5)) {
   res &lt;- bind_rows(
     PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="scenario-n1-comparison-with-biglasso" class="section level3">
+<h3>Scenario n°1 (comparison with biglasso)</h3>
+<pre class="r"><code>library(biglasso)</code></pre>
+<pre><code>## Loading required package: bigmemory</code></pre>
+<pre><code>## Loading required package: Matrix</code></pre>
+<pre><code>## 
+## Attaching package: 'Matrix'</code></pre>
+<pre><code>## The following object is masked from 'package:tidyr':
+## 
+##     expand</code></pre>
+<pre><code>## Loading required package: ncvreg</code></pre>
+<pre><code>## 
+## Attaching package: 'ncvreg'</code></pre>
+<pre><code>## The following object is masked from 'package:bigstatsr':
+## 
+##     AUC</code></pre>
+<pre class="r"><code>library(Matrix)</code></pre>
+<pre class="r"><code>G3 &lt;- big.matrix(nrow(G), ncol(G) + ncol(covar.all),
+                 backingfile = &quot;G-PC&quot;, 
+                 backingpath = &quot;backingfiles&quot;)
+big_apply(G, function(X, ind) {
+  G3[, ind] &lt;- X[, ind]
+  NULL
+}, a.combine = 'c')
+G3[, ncol(G) + cols_along(covar.all)] &lt;- covar.all</code></pre>
+<pre class="r"><code>G3 &lt;- attach.big.matrix(&quot;backingfiles/G-PC.desc&quot;)</code></pre>
+<pre class="r"><code>params.grid7 &lt;- expand.grid(
+  n.train = 6000,
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.8), 
+  par.model  = c(&quot;simple&quot;),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results7&quot;)) dir.create(&quot;results7&quot;)
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file &lt;- paste0(&quot;results7/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid7[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = params[[&quot;n.train&quot;]]))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;),
+    logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
   )
   params[[&quot;res&quot;]] &lt;- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
