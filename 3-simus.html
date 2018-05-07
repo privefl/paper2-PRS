@@ -198,14 +198,15 @@ NCORES &lt;- 6</code></pre>
 </div>
 <div id="logistic-regression" class="section level3">
 <h3>Logistic regression</h3>
-<pre class="r"><code>logit.CMSA &lt;- function(G, pheno.all, covar.all, ind.train, ind.test, method) {
+<pre class="r"><code>logit.CMSA &lt;- function(G, pheno.all, covar.all, ind.train, ind.test,
+                       method = &quot;logit-simple&quot;, alpha = 0.5) {
   
   timing &lt;- system.time({
     
     cmsa.logit &lt;- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = NCORES)
+                               alpha = alpha, ncores = NCORES)
     
     preds &lt;- rowMeans(
       predict(cmsa.logit, X = G, ind.row = ind.test, 
@@ -603,8 +604,48 @@ for (i in rows_along(params.grid7)) {
     
   # Get results from all methods
   res &lt;- bind_rows(
-    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test),
     logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="scenario-n1-comparison-of-different-alpha" class="section level3">
+<h3>Scenario n°1 (comparison of different <span class="math inline">\(\alpha\)</span>)</h3>
+<pre class="r"><code>if (!dir.exists(&quot;results8&quot;)) dir.create(&quot;results8&quot;)
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file &lt;- paste0(&quot;results8/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid7[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  pheno.all &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]], 
+    K = 0.3                 
+  )
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = params[[&quot;n.train&quot;]]))
+  ind.test &lt;- setdiff(1:n, ind.train)
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = &quot;logit-simple-enet-ridge&quot;, alpha = 0.001),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = &quot;logit-simple&quot;, alpha = 0.5),
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
+               method = &quot;logit-simple-lasso&quot;, alpha = 1)
   )
   params[[&quot;res&quot;]] &lt;- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)

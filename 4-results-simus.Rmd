@@ -18,9 +18,11 @@ options(width = 110)
 ```{r, message=FALSE}
 library(tidyverse)
 
-methods.color <- setNames(c(scales::hue_pal()(6), "black"), 
-                          c("logit-simple", "PRS-max", "PRS-stringent",
-                            "T-Trees", "logit-triple", "PRS-all", "biglasso")) 
+methods.color <- setNames(
+  c(scales::hue_pal()(6), c("black", "blue", "green")), 
+  c("logit-simple", "PRS-max", "PRS-stringent", "T-Trees", "logit-triple", "PRS-all", 
+    "biglasso", "logit-simple-enet-ridge", "logit-simple-lasso")
+) 
 ```
 
 ```{r}
