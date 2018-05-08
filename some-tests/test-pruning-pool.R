@@ -34,7 +34,6 @@ scree_plot(obj.pool, 4)
 plot(obj.pool$loadings[, 1], pch = 20)
 plot(obj.pool$loadings[, 2], pch = 20)
 plot(obj.pool$loadings[, 3], pch = 20)
-plot(obj.pool$loadings[, 4], pch = 20)
 
 plink <- download_plink()
 file.base <- "../Dubois2010_data/FinnuncorrNLITUK1UK3hap300_QC_norel"
@@ -47,23 +46,32 @@ ind.keep <- match(to_keep, celiac$map$marker.ID)
 pool_mat.sub <- read.pcadapt(t(afs[ind.keep, ]), type = "pool")
 pcadapt.sub <- pcadapt(pool_mat.sub)
 plot(pcadapt.sub, chr.info = celiac$map$chromosome[ind.keep])
-scree_plot(pcadapt.sub, 5)
+scree_plot(pcadapt.sub, 4)
 plot(pcadapt.sub$loadings[, 1], pch = 20)
 plot(pcadapt.sub$loadings[, 2], pch = 20)
 plot(pcadapt.sub$loadings[, 3], pch = 20)
 
-obj.pcadapt <- snp_pcadapt(G, obj.svd$u)
-snp_manhattan(obj.pcadapt, CHR, POS, npoints = 50e3)
-
-tmat <- scale(t(afs))
-svd <- svd(tmat[, ind.keep])
+tmat <- scale(t(afs), center = TRUE, scale = FALSE)
+ind.keep2 <- ind.keep[seq(1, length(ind.keep), by = 5)]
+svd <- svd(tmat[, ind.keep2])
 w <- crossprod(tmat, sweep(svd$u, 2, svd$d, '/')[, 1:3])
-plot(w[ind.keep, ], svd$v[, 1:3], pch = 20)
+
+plot(w[ind.keep2, ], svd$v[, 1:3], pch = 20)
 abline(0, 1, col = "red")
+
+plot(w[, 1], pch = 20)
+plot(w[, 2], pch = 20)
+plot(w[, 3], pch = 20)
 
 res <- pcadapt:::get_statistics(w, method = "mahalanobis", 
                                 pass = rows_along(w))
 plot(-log10(res$pvalues), pch = 20)
 
-obj.pcadapt.sub <- snp_pcadapt(G, obj.svd$u, ind.col = ind.keep)
-snp_manhattan(obj.pcadapt.sub, CHR[ind.keep], POS[ind.keep])
+obj.pcadapt <- snp_gc(snp_pcadapt(G, obj.svd$u))
+snp_manhattan(obj.pcadapt, CHR, POS)
+
+plot(-log10(res$pvalues), -predict(obj.pcadapt), pch = 20)
+abline(0, 1, col = "red")
+
+plot(-log10(res$pvalues), -log10(obj.pool$pvalues), pch = 20)
+abline(0, 1, col = "red")
