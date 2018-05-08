@@ -1,0 +1,2 @@
+- do it on 450,000 individuals once
+- do simus avec differents R2 pour le clumping 

@@ -16,7 +16,7 @@ options(width = 85)
 ```{r, message=FALSE}
 library(tidyverse)
 library(glue)
-NCORES <- 6
+NCORES <- nb_cores()
 ```
 
 Each method's function returns a tibble (data frame) with 4 columns:
