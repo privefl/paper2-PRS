@@ -167,38 +167,48 @@ All the code used in this paper along with results such as figures and tables, a
 
 \section{Results}
 
-\subsection{Comparison between C+T and ``logit-simple'' methods}
+\subsection{Joint estimation improves predictive performance}
 
 We compared the penalized logistic regression (``logit-simple'') with the C+T method (``PRS'') using whole-genome simulations of scenario \textnumero1 (Table \ref{tab:simus}).
 
-When there are 30 causal SNPs and 80\% of heritability, penalized logistic regression provides AUC greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T method range between 83\% and 90\% (Figure \ref{fig:main-AUC-logit}). Moreover, the penalized logistic regression consistently provides better predictive performance than the C+T method across all scenarios we considered, except in the case of high polygenicity and small sample size, in which case all methods hardly exceed 60\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}).
+When simulating a model with 30 causal SNPs and an heritability of 80\%, penalized logistic regression provides AUC greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T method range between 83\% and 90\% (Figure \ref{fig:main-AUC-logit}). 
+Moreover, the penalized logistic regression consistently provides better predictive performance than the C+T method across all scenarios we considered, except in the case of high polygenicity and small sample size, in which case all methods hardly exceed 60\% of AUC (Figures \ref{fig:main-AUC-logit} and \ref{fig:supp-AUC-logit}).
 
-Method ``logit-simple'' provides particularly higher predictive performance than ``PRS-max'' where there are correlations between predictors, i.e.\ when we simulate 30 SNPs in the HLA region. In this situation, the mean AUC reaches 92.5\% with the ``logit-simple'' and 83\% with the ``PRS-max'', for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
-
-In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can impact its predictive performance. For example, AUC ranges from less than 60\% to 90\% in a model with only 30 causal SNPs (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
+Method ``logit-simple'' provides particularly higher predictive performance than ``PRS-max'' where there are correlations between predictors, i.e.\ when we choose causal SNPs to be in the HLA region. In this situation, the mean AUC reaches 92.5\% with the ``logit-simple'' and 83\% with the ``PRS-max'', for a maximum achievable AUC of 94\% (Figure \ref{fig:main-AUC-logit}).
 
 Note that for the simulations we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
 
-\subsection{The other methods and the ``fancy'' model}
+\subsection{Importance of hyper-parameters}
+
+In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can impact its predictive performance. For example, AUC ranges from less than 60\% to 90\% in a model with only 30 causal SNPs (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
+
+Method ``logit-simple'', that automatically chooses hyper-parameter $\lambda$, provides similar predictive performance than the best predictive performance of the biglasso implementation \cite[]{zeng2017efficient}, only slightly better for biglasso but likely due to over-fitting when reporting the best prediction (Figure \ref{fig:supp-biglasso}).
+
+When comparing different values of hyper-parameter $\alpha$ for ``logit-simple'', we report similar predictive performance for $\alpha = 0.5$ and $\alpha = 1$. The case of $\alpha = 0.001$ consistently provides lower predictive performance, except in the case where there are 3000 causal SNPs whose effects follow a normal distribution (Figure \ref{fig:supp-alpha}). Note that this is also the only case where ``PRS-all'' outperforms logit-simple.
+
+\subsection{Non-linear effects}
 
 We tested the T-Trees method in scenario \textnumero1.
-As compared to the ``logit-simple'' method, T-Trees perform worse in terms of predictive ability, while taking much longer to run and making more complex predictive models because T-Trees use more predictors and non-linear effects (Figure \ref{fig:supp-ttrees}). Even when simulating a fancy model in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower with T-Trees as compared with the ``logit-simple'' method.
+As compared to ``logit-simple'', T-Trees perform worse in terms of predictive ability, while taking much longer to run and making more complex predictive models because T-Trees use more predictors and non-linear effects (Figure \ref{fig:supp-ttrees}). Even when simulating a fancy model in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower with T-Trees as compared with ``logit-simple''.
 
-Secondly, we compare the two penalized logistic regressions in scenario \textnumero1, ``logit-simple'' and ``logit-triple'' that uses additional features coding for recessive and dominant effects.
-We report that ``logit-triple'' is nearly as good as ``logit-simple'' when there are only linear effects (differences of AUC smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For the ``fancy model'', ``logit-triple'' provides AUC values at least 3.5\% higher than ``logit-simple'', except when there are 3000 causal SNPs.
+Secondly, we compare the two penalized logistic regressions in scenario \textnumero1, ``logit-simple'' and ``logit-triple'' that uses additional features (variables) coding for recessive and dominant effects.
+Predictive performance of ``logit-triple'' are nearly as good as ``logit-simple'' when there are only linear effects (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For the ``fancy model'', ``logit-triple'' provides AUC values at least 3.5\% higher than ``logit-simple'', except when there are 3000 causal SNPs.
 Yet, the ``triple'' solution takes 2-3 times as much time to run and requires 3 times as much disk storage as the ``logit-simple''.
 
-Thirdly, for the ``fancy'' simulation model, we report similar results as in the previous subsection. As before, ``logit-simple'' achieves greater AUCs than the ``PRS-max'', excepted in the case of 3000 causal SNP anywhere on the genome, where no method exceed 60\% of AUC (Figure \ref{fig:supp-AUC-logit-fancy}). Moreover, the choice of the threshold inclusion of SNPs also greatly impacts the performance of the C+T method (Figure \ref{fig:supp-AUC-PRS-fancy}).
+Thirdly, for the ``fancy'' simulation model, we report similar results as in the previous subsection. As before, ``logit-simple'' achieves greater AUCs than the ``PRS-max'', except in the case of 3000 causal SNP anywhere on the genome, where no method exceed 60\% of AUC (Figure \ref{fig:supp-AUC-logit-fancy}). Moreover, the choice of the threshold inclusion of SNPs also greatly impacts the performance of the C+T method (Figure \ref{fig:supp-AUC-PRS-fancy}).
 
 \subsection{Simulations varying number of SNPs and training size}
 
-These simulations correspond to scenarios \textnumero2 and \textnumero3 (Table \ref{tab:simus}). First, when reproducing simulations of scenario \textnumero1 using only chromosome 6, the predictive performance of all methods globally increase (Figure \ref{fig:supp-AUC-chr6}). There is particularly a large increase when simulating 3000 causal SNPs anywhere in the dataset: AUC from the ``logit-simple'' increases from less than 60\% to nearly 80\%. On the contrary, when simulating only 30 causal SNPs on the corresponding dataset, AUC of the ``PRS-max'' does not increase. Secondly, when varying the training size, we report an increase of AUC when increasing the training size, with a faster increase of AUC provided by ``logit-simple'' as compared to ``PRS-max'' (Figure  \ref{fig:main-AUC-ntrain}).
+First, when reproducing simulations of scenario \textnumero1 using only chromosome 6 (scenario \textnumero2), the predictive performance of all methods globally increase (Figure \ref{fig:supp-AUC-chr6}). 
+There is particularly a large increase when simulating 3000 causal SNPs anywhere in the dataset: AUC from the ``logit-simple'' increases from less than 60\% to nearly 80\%. 
+On the contrary, when simulating only 30 causal SNPs on the corresponding dataset, AUC of the ``PRS-max'' does not increase. 
+Secondly, when varying the training size (scenario \textnumero3), we report an increase of AUC when increasing the training size, with a faster increase of AUC provided by ``logit-simple'' as compared to ``PRS-max'' (Figure  \ref{fig:main-AUC-ntrain}).
 
 
 \subsection{Polygenic scores for the celiac disease}
 
 Joint logistic regressions provide higher AUC for the Celiac data: 88.8\% with ``logit-simple'' and 89.2\% with ``logit-triple'' as compared to 82.4\% with the C+T method.
-The relative differences in partial AUC, for specificities larger than 90\%, are even larger with values of 0.0414, 0.0429 and 0.0286 obtained with ``logit-simple'', ``logit-triple'' and the C+T method, respectively.
+The relative increase in partial AUC, for specificities larger than 90\%, is even larger (45\% and 50\%) with partial AUC values of 0.0414, 0.0429 and 0.0286 obtained with ``logit-simple'', ``logit-triple'' and the C+T method, respectively.
 Moreover, logistic regressions use less predictors, respectively 3320, 4470 and 9850 (Table \ref{tab:results-celiac}, figures \ref{fig:celiac-roc} and \ref{fig:supp-score-densities} and supplementary notebook ``results-celiac'').
 Note that for the C+T method, we still report the best result among 102 p-value thresholds.
 In terms of computation time, we report only the GWAS computation for the C+T method and we show that the ``logit-simple'' method, while learning jointly on all SNPs at once, is faster than the C+T method (84 vs 148 seconds), and the ``logit-triple'' takes less than twice as long as the ``logit-simple'' (141 vs 84 seconds).
@@ -218,13 +228,14 @@ logit-triple & 0.892 (0.000488) & 0.0429 (0.000174) & 4470 (80.6) & 141 (1.85) \
 \end{tabular}
 \end{table}
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Discussion}
 
 \subsection{Joint estimation improves predictive performance}
 
-In this comparative study, we present a computationally efficient implementation of penalized logistic regression. This model can be used to build polygenic risk scores based on very large SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to dramatically improve predictive performance as compared to the standard C+T approach in which these effects are learned independently. Penalized logistic regression consistently outperform the C+T method, excepted in the case where there are only small effects and sample size is limited, in which case all methods perform poorly. Note that in this particular case, penalized logistic regression could outperform the C+T method if choosing a different value for hyper-parameter $\alpha$.
+In this comparative study, we present a computationally efficient implementation of penalized logistic regression. This model can be used to build polygenic risk scores based on very large SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to dramatically improve predictive performance as compared to the standard C+T approach in which these effects are learned independently. Penalized logistic regression consistently outperform the C+T method, except in the case where there are only small effects and sample size is limited, in which case all methods perform poorly. Note that in this particular case, penalized logistic regression could outperform the C+T method if choosing a different value for hyper-parameter $\alpha$.
 
 \subsection{Importance of hyper-parameters}
 
@@ -232,10 +243,10 @@ Indeed, the choice of hyper-parameters' values is very important as it can great
 The choice of the $r^2$ threshold of the clumping step is important. Indeed, on the one hand, choosing a low value for this threshold may discard independently predictive SNPs that are in LD; yet, on the other hand, when choosing a high value for this threshold, too much redundant information would be included in the model, which would bias SNP effects.
 Moreover, in this paper, we reported the maximum AUC of 102 $p_T$ thresholds, a threshold that should normally be learned on the training set only. The choice of this threshold is very important as it can greatly impact the predictive performance of the C+T method \cite[]{ware2017heterogeneity}, which we confirm in this study.
 
-On the contrary, in the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing an optimal hyper-parameter $\lambda$, accouting for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the training of the model thanks to the development of an early stopping criterion. 
+On the contrary, in the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the training of the model thanks to the development of an early stopping criterion. 
 Usually, cross-validation is used to assess the best value for this hyper-parameter and then the model is train again with this particular hyper-parameter value \cite[]{Hastie2008,wei2013large}. Yet, as the value of $\lambda$ depends on the sample size and doing cross-validation and retraining is computationally demanding, we think using CMSA is more appropriate in this setting. 
-Concerning hyper-parameter $\alpha$ that accounts for the relative importance of the L1 and L2 regularizations, we show that an hybrid approach ($\alpha = 0.5$) gives similar results as a model using only L1 regularization ($\alpha = 1$). 
-Our penalized logistic regression implementation does not allow for setting $\alpha = 0$, a model that would assume the infinitesimal model. Yet, when testing with $\alpha = 0.001$, we show that this setting consistently provides lower predictive performance, excepted in the case where there are many small effects. In the light of this result, we now integrate an optional grid-search procedure in our implementation in order to determine an optimal value for hyper-parameter $\alpha$.
+Concerning hyper-parameter $\alpha$ that accounts for the relative importance of the L1 and L2 regularizations, we show that an hybrid approach ($\alpha = 0.5$) gives similar results as a model using only L1 regularization ($\alpha = 1$) in all simulated models. 
+Our penalized logistic regression implementation does not allow for setting $\alpha = 0$, a model that would assume the infinitesimal model. Yet, when testing with $\alpha = 0.001$, we show that this setting consistently provides lower predictive performance, except in the case where there are many small effects and small sample size, which is a case where all methods perform poorly. %In light of this result, we now integrate an optional grid-search procedure in our implementation in order to determine an optimal value for hyper-parameter $\alpha$.
 
 \subsection{Non-linear effects}
 
@@ -247,9 +258,9 @@ However, predictive performance of T-Trees were consistently lower than penalize
 
 \subsection{Limitations}
 
-Our approach has one major limitations: the main advantage of the C+T method is that it is applicable directly on summary statistics, allowing to leverage the largest GWAS sample size to date, even when individual cohort data cannot be merged because of practical and ethical reasons (e.g. consortium data including hundreds of cohorts). As of today, the proposed penalized logistic regression does not allow for the analysis of summary data, but represents an important future direction of our work. The current version is of particular interest for the analysis of modern SNP dataset including hundreds of thousands of individuals. 
+Our approach has one major limitation: the main advantage of the C+T method is that it is applicable directly to summary statistics, allowing to leverage the largest GWAS sample size to date, even when individual cohort data cannot be merged because of practical and ethical reasons (e.g. consortium data including hundreds of cohorts). As of today, the proposed penalized logistic regression does not allow for the analysis of summary data, but represents an important future direction of our work. The current version is of particular interest for the analysis of modern SNP dataset including hundreds of thousands of individuals. 
 
-Finally, in this comparative study, we did not consider the problem of population structure \cite[]{marquez2017multiethnic,martin2017human,vilhjalmsson2015modeling} and also did not consider non-genetic data such as environmental and clinical data \cite[]{dey2013integration,van2012integration}. In another study, we will assess how can we use models and effects learned in one population to improve learning and prediction in another population. We will use a dataset as large as the UK biobank \cite[]{bycroft2017genome}. In another study, we wish also to assess how can we combine the information provided by genetic data with clinical and environmental data, possibly in a non-linear way.
+Finally, in this comparative study, we did not consider the problem of population structure \cite[]{marquez2017multiethnic,martin2017human,vilhjalmsson2015modeling} and also did not consider non-genetic data such as environmental and clinical data \cite[]{dey2013integration,van2012integration}. In another study, we will assess how can we use models and effects learned in one population to improve learning and prediction in another population. We will use a dataset as large as the UK biobank \cite[]{bycroft2017genome}. Finally, we also wish to assess how can we combine the information provided by genetic data with clinical and environmental data, possibly in a non-linear way.
 
 
 
