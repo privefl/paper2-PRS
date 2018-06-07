@@ -14,7 +14,7 @@ options(width = 95)
 ```{r}
 library(tidyverse)
 myggplot <- function(..., coeff = 1) {
-  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
+  ggplot(...) + bigstatsr::theme_bigstatsr(size.rel = coeff)
 } 
 ```
 
@@ -29,6 +29,8 @@ CHR <- celiac$map$chromosome
 POS <- celiac$map$physical.pos
 NCORES <- nb_cores()
 y <- celiac$fam$affection - 1
+
+G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
 ```
 
 ```{r, cache=TRUE}
@@ -137,7 +139,7 @@ system.time(
   logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
                         ind.train = ind.train, 
                         covar.train = obj.svd$u[ind.train, ],
-                        ncores = NCORES)
+                        ncores = NCORES, alpha = 0.5)
 )
 # Get K = 10 predictions/individuals
 preds1 <- predict(logit, X = G, ind.row = ind.test, 
@@ -156,12 +158,11 @@ AUC(preds1.comb, y[ind.test])
 ### Logistic regression with feature engineering
 
 ```{r, cache=TRUE}
-G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
 system.time(
   logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
                          ind.train = ind.train, 
                          covar.train = obj.svd$u[ind.train, ],
-                         ncores = NCORES)
+                         ncores = NCORES, alphas = 0.5)
 )
 
 preds2 <- predict(logit2, X = G2, ind.row = ind.test, 
@@ -314,7 +315,7 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method, pri
     cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = nb_cores())
+                               ncores = NCORES, alphas = 0.5)
     
     preds.all <- predict(cmsa.logit, X = G, ind.row = ind.test, 
                          covar.row = covar.all[ind.test, , drop = FALSE])
@@ -356,6 +357,7 @@ for (i in 1:100) {
   saveRDS(res, file = res.file)
 }
 ```
+
 ```{r}
 pAUC <- function(pred, target, p = 0.1) {
   val.min <- min(target)
@@ -382,7 +384,7 @@ list.files(path = "results6/", full.names = TRUE) %>%
   map_df(readRDS) %>%
   format_results() %>%
   group_by(method) %>%
-  summarize_at(-1, function(x) {
+  summarize_at(c("AUC", "pAUC", "nb.preds", "timing"), function(x) {
     glue::glue("{signif(mean(x), 3)} ({signif(boot(x), 3)})")
   }) %>%
   print() %>%

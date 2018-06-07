@@ -86,6 +86,7 @@ snp_triple <- function(x) {
 ```
 
 ```{r}
+celiac <- snp_attach("backingfiles/celiacQC.rds")
 snp_triple(celiac)
 snp_triple(celiac2)
 ```

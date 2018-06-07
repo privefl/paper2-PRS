@@ -16,7 +16,9 @@ options(width = 85)
 ```{r, message=FALSE}
 library(tidyverse)
 library(glue)
-NCORES <- nb_cores()
+library(bigsnpr)
+# https://stackoverflow.com/q/9486952/6103040
+options(bigstatsr.cluster.type = "PSOCK")
 ```
 
 Each method's function returns a tibble (data frame) with 4 columns:
@@ -93,14 +95,14 @@ PRS <- function(G, infos.chr, infos.pos,
 
 ```{r}
 logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test,
-                       method = "logit-simple", alpha = 0.5) {
+                       method = "logit-simple", alphas = 0.5) {
   
   timing <- system.time({
     
     cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
                                ind.train = ind.train, 
                                covar.train = covar.all[ind.train, , drop = FALSE],
-                               alpha = alpha, ncores = NCORES)
+                               alphas = alphas, ncores = NCORES)
     
     preds <- rowMeans(
       predict(cmsa.logit, X = G, ind.row = ind.test, 
@@ -197,7 +199,6 @@ logit.biglasso <- function(G3, pheno.all, covar.all, ind.train, ind.test) {
 ### Data
 
 ```{r}
-library(bigsnpr)
 celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
 CHR <- celiac2$map$chromosome
 POS <- celiac2$map$physical.pos
@@ -208,6 +209,8 @@ covar.all <- readRDS("backingfiles/PCA2.rds")$u
 
 n <- nrow(G)
 ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
+
+NCORES <- nb_cores()
 ```
 
 ### Simulation of phenotypes
@@ -471,9 +474,9 @@ library(Matrix)
 ```
 
 ```{r, eval=FALSE}
-G3 <- big.matrix(nrow(G), ncol(G) + ncol(covar.all),
-                 backingfile = "G-PC", 
-                 backingpath = "backingfiles")
+G3 <- bigmemory::big.matrix(nrow(G), ncol(G) + ncol(covar.all),
+                            backingfile = "G-PC",                 
+                            backingpath = "backingfiles")
 big_apply(G, function(X, ind) {
   G3[, ind] <- X[, ind]
   NULL
@@ -482,7 +485,7 @@ G3[, ncol(G) + cols_along(covar.all)] <- covar.all
 ```
 
 ```{r}
-G3 <- attach.big.matrix("backingfiles/G-PC.desc")
+G3 <- bigmemory::attach.big.matrix("backingfiles/G-PC.desc")
 ```
 
 ```{r}
@@ -564,14 +567,25 @@ for (i in rows_along(params.grid7)) {
   # Get results from all methods
   res <- bind_rows(
     logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
-               method = "logit-simple-enet-ridge", alpha = 0.001),
+               method = "logit-simple-enet-ridge", alphas = 0.001),
     logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
-               method = "logit-simple",            alpha = 0.5),
+               method = "logit-simple",            alphas = 0.5),
     logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, 
-               method = "logit-simple-lasso",      alpha = 1)
+               method = "logit-simple-lasso",      alphas = 1)
   )
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
 
+
+
+```{r, include=FALSE, error=TRUE}
+library(gmailr)
+send_message(
+  mime(To = "florian.prive.21@gmail.com",
+       From = "florian.prive.21@gmail.com",
+       Subject = sprintf("Knitting of %s has finished",
+                         knitr::current_input()))
+)
+```
