@@ -16,9 +16,6 @@ options(width = 85)
 This was done in [another paper](https://doi.org/10.1101/190926).
 
 ```{r}
-file.copy(paste0("../paper1-packages/backingfiles/celiacQC", c(".bk", ".rds")),
-          paste0("backingfiles/celiacQC", c(".bk", ".rds")))
-
 library(bigsnpr)
 str(celiac <- snp_attach("backingfiles/celiacQC.rds"), max.level = 1)
 ```
@@ -28,7 +25,7 @@ str(celiac <- snp_attach("backingfiles/celiacQC.rds"), max.level = 1)
 
 ```{r}
 # Get population
-pop.files <- list.files(path = "../thesis-celiac/Dubois2010_data/", 
+pop.files <- list.files(path = "backingfiles", 
                         pattern = "cluster_*", full.names = TRUE)
 pop <- snp_getSampleInfos(celiac, pop.files)[[1]]
 pop.names <- c("Netherlands", "Italy", "UK1", "UK2", "Finland")
@@ -47,6 +44,8 @@ obj.svd <- snp_autoSVD(celiac$genotypes,
                        celiac$map$chromosome,
                        celiac$map$physical.pos, 
                        ncores = nb_cores())
+# Save this PCA
+saveRDS(obj.svd, "backingfiles/PCA.rds")
 
 library(ggplot2)
 plot(obj.svd, type = "scores", scores = 1:2) + 
@@ -93,10 +92,11 @@ obj.svd2 <- snp_autoSVD(celiac2$genotypes,
                         celiac2$map$chromosome,
                         celiac2$map$physical.pos,
                         ncores = nb_cores())
-plot(obj.svd2)
-plot(obj.svd2, type = "scores") 
 # Save this new PCA
 saveRDS(obj.svd2, "backingfiles/PCA2.rds")
+
+plot(obj.svd2)
+plot(obj.svd2, type = "scores") 
 ```
 
 ```{r}

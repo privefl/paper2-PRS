@@ -61,7 +61,7 @@ myggplot <- function(..., coeff = 1) {
 ```
 
 ```{r}
-barplot_causal <- function(results, h2) {
+barplot_causal <- function(results) {
   
   results %>%
     myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +

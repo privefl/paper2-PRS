@@ -91,6 +91,9 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -195,15 +198,19 @@ snp_triple(celiac)</code></pre>
 <pre><code>## [1] &quot;/home/privef/Bureau/paper2-PRS/backingfiles/celiacQC_sub1_tripled1.rds&quot;</code></pre>
 <pre class="r"><code># List all the files with their size in GB
 round(sapply(list.files(&quot;backingfiles&quot;, full.names = TRUE), file.size) / 1024^3, 1)</code></pre>
-<pre><code>##  backingfiles/celiacQC_sub1_tripled1.bk backingfiles/celiacQC_sub1_tripled1.rds 
-##                                     5.6                                     0.0 
+<pre><code>##                backingfiles/celiacQC.bk               backingfiles/celiacQC.rds 
+##                                     4.0                                     0.0 
 ##           backingfiles/celiacQC_sub1.bk          backingfiles/celiacQC_sub1.rds 
 ##                                     1.9                                     0.0 
+##  backingfiles/celiacQC_sub1_tripled1.bk backingfiles/celiacQC_sub1_tripled1.rds 
+##                                     5.6                                     0.0 
 ##       backingfiles/celiacQC_tripled1.bk      backingfiles/celiacQC_tripled1.rds 
 ##                                    11.9                                     0.0 
-##                backingfiles/celiacQC.bk               backingfiles/celiacQC.rds 
-##                                     4.0                                     0.0 
-##                    backingfiles/PCA.rds                   backingfiles/PCA2.rds 
+##            backingfiles/cluster_Finn_v2                 backingfiles/cluster_IT 
+##                                     0.0                                     0.0 
+##                 backingfiles/cluster_NL             backingfiles/cluster_UK1_v2 
+##                                     0.0                                     0.0 
+##             backingfiles/cluster_UK3_v2                   backingfiles/PCA2.rds 
 ##                                     0.0                                     0.0 
 ##                backingfiles/ttrees.bloc                 backingfiles/ttrees.jdb 
 ##                                     0.0                                     3.7</code></pre>
