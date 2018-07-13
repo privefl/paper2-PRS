@@ -27,9 +27,10 @@ methods.color <- setNames(
 
 ```{r}
 myggplot <- function(..., coeff = 1) {
-  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff) +
-  theme(strip.text.x = element_text(size = rel(2)),
-        strip.text.y = element_text(size = rel(2)))
+  ggplot(...) + 
+    bigstatsr::theme_bigstatsr(size.rel = coeff) +
+    theme(strip.text.x = element_text(size = rel(2)),
+          strip.text.y = element_text(size = rel(2)))
 } 
 ```
 

@@ -50,10 +50,6 @@ covar.all <- readRDS("backingfiles/PCA2.rds")$u
 
 n <- nrow(G)
 ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
-
-TTree <- "../TTree-source/TTree"
-
-NCORES <- nb_cores()
 ```
 
 ### Scenario n°1 (with T-Trees)

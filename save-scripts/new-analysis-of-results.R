@@ -1,46 +1,12 @@
-add_AUC <- function(x, pAUC) {
-  x %>% 
-    mutate(AUC  = map2_dbl(pred, pheno, bigstatsr::AUC),
-           pAUC = map2_dbl(pred, pheno, pAUC))
-}
+library(tidyverse)
+library(bigsnpr)
+library(pkg.paper.PRS)
 
-add_sens_FDP <- function(x, corr) {
-  
-  alt <- map2(x$true_set, x$set, ~ {
-    
-    if (length(.y) == 0) return(c(0, 0))
-    
-    corr_set <- abs(corr[.x, .y, drop = FALSE])
-    
-    AltSens <- mean(apply(corr_set, 1, max, na.rm = TRUE))
-    AltFDP <- 1 - mean(apply(corr_set, 2, max, na.rm = TRUE))
-    c(AltSens, AltFDP)
-  }) %>%
-    transpose()
-  
-  x %>%
-    mutate(AltSens = unlist(alt[[1]]),
-           AltFDP  = unlist(alt[[2]]))
-}
-
-results4 <- list.files("results4", full.names = TRUE) %>%
-  big_parallelize(., p.FUN = function(files, ind, add_AUC, pAUC, add_sens_FDP, corr) {
-    
-    library(tidyverse)
-    library(Matrix)
-    
-    files[ind] %>%
-      map_dfr(~readRDS(.x)) %>%
-      as_tibble() %>%
-      mutate(
-        par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
-                            levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
-      add_AUC(pAUC) %>%
-      add_sens_FDP(corr) %>%
-      select(-c(num.simu, true_set, set, pheno, pred))
-    
-  }, p.combine = bind_rows, ind = seq_along(.), ncores = NCORES, 
-  add_AUC = add_AUC, pAUC = pAUC, add_sens_FDP = add_sens_FDP, corr = corr)
+corr <- readRDS("backingfiles/corr2.rds")
+system.time(
+  results4 <- list.files("results4", full.names = TRUE) %>%
+    read_format_results(corr)
+)  # 78 sec for 932 of ~150KB
 
 print(results4, width = Inf)
 
@@ -49,14 +15,8 @@ print(results4, width = Inf)
 results4 %>%
   filter(method %in% c("PRS-max", "logit-simple")) %>%
   group_by_at(c(vars(starts_with("par")), "method", "thr.r2")) %>%
-  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC, n = 1e4), N = n()) %>%
   print(n = Inf) -> results4.summary
-
-
-c_method_r2 <- function(method, r2) {
-  ifelse(is.na(r2), method, paste0(method, "-", r2))
-}
-
 
 barplot_causal <- function(results) {
   
@@ -71,6 +31,15 @@ barplot_causal <- function(results) {
                        oob = scales::rescale_none) +
     labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
          fill = "Method", color = "Method")
+}
+
+barplot_causal_all <- function(results) {
+  
+  results %>%
+    barplot_causal() +
+    geom_hline(aes(yintercept = auc_max), linetype = 3, color = "blue",
+               data = data.frame(par.h2 = c(0.5, 0.8), auc_max = c(0.84, 0.94))) +
+    facet_grid(par.dist ~ par.h2)
 }
 
 barplot_causal_all(results4.summary)

@@ -6,7 +6,7 @@ corr <- readRDS("backingfiles/corr2.rds")
 system.time(
   results5 <- list.files("results5", full.names = TRUE) %>%
     read_format_results(corr)
-)  # 62 sec for 647 of ~1Mb
+)  # 62 sec for 647 of ~1MB
 
 results5 %>%
   filter(method %in% c("PRS-max", "logit-simple")) %>%
