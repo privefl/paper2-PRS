@@ -1,0 +1,23 @@
+Package: pkg.paper.PRS
+Version: 0.1.0
+Title: Functions Used in Paper 2
+Description: Functions that are used in my second paper (about PRS).
+Authors@R: person("First", "Last", , "first.last@example.com", c("aut", "cre"))
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+ByteCompile: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.0.1
+LinkingTo: 
+    Rcpp
+Imports: 
+    Rcpp,
+    purrr,
+    dplyr,
+    magrittr,
+    methods,
+    Matrix,
+    bigstatsr,
+    stats,
+    tibble
