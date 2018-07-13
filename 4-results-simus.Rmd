@@ -26,33 +26,6 @@ methods.color <- setNames(
 ```
 
 ```{r}
-pAUC <- function(pred, target, p = 0.1) {
-  val.min <- min(target)
-  q <- quantile(pred[target == val.min], probs = 1 - p)
-  ind <- (target != val.min) | (pred > q)
-  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
-           error = function(e) p^2 / 2)  # all same prediction
-}
-
-format_results <- function(results) {
-  results %>%
-    as_tibble() %>%
-    mutate(
-      par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
-                          levels = c("30 in HLA", paste(3 * 10^(1:3), "in all"))),
-      AUC = map_dbl(eval, ~ bigstatsr::AUC(.x[, 1], .x[, 2])),
-      pAUC = map_dbl(eval, ~ pAUC(.x[, 1], .x[, 2]))
-    )
-}
-```
-
-```{r}
-boot <- function(x, n = 1e5, f = mean) {
-  sd(replicate(n, f(sample(x, replace = TRUE))))
-}
-```
-
-```{r}
 myggplot <- function(..., coeff = 1) {
   bigstatsr:::MY_THEME(ggplot(...), coeff = coeff) +
   theme(strip.text.x = element_text(size = rel(2)),

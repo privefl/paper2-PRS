@@ -4,7 +4,7 @@
 \alias{read_format_results}
 \title{Read & format results}
 \usage{
-read_format_results(files, corr, ncores = bigstatsr::nb_cores())
+read_format_results(files, corr, ncores = nb_cores())
 }
 \arguments{
 \item{files}{Files to read from.}

@@ -19,5 +19,9 @@ Imports:
     methods,
     Matrix,
     bigstatsr,
+    bigsnpr,
     stats,
-    tibble
+    tibble,
+    glue,
+    utils,
+    rmutil

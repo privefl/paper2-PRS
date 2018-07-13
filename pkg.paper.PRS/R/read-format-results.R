@@ -45,13 +45,13 @@ pAUC <- function(pred, target, p = 0.1) {
   val.min <- min(target)
   q <- stats::quantile(pred[target == val.min], probs = 1 - p)
   ind <- (target != val.min) | (pred > q)
-  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p,
+  tryCatch(AUC(pred[ind], target[ind]) * p,
            error = function(e) p^2 / 2)  # all same prediction
 }
 
 add_AUC <- function(x, pAUC) {
   x %>%
-    dplyr::mutate(AUC  = purrr::map2_dbl(pred, pheno, bigstatsr::AUC),
+    dplyr::mutate(AUC  = purrr::map2_dbl(pred, pheno, AUC),
                   pAUC = purrr::map2_dbl(pred, pheno, pAUC))
 }
 
@@ -66,7 +66,7 @@ add_AUC <- function(x, pAUC) {
 #' @return A data frame of formated and aggregated results.
 #' @export
 #'
-read_format_results <- function(files, corr, ncores = bigstatsr::nb_cores()) {
+read_format_results <- function(files, corr, ncores = nb_cores()) {
 
   bigstatsr::big_parallelize(files, p.FUN = function(files, ind, corr) {
 
@@ -80,7 +80,7 @@ read_format_results <- function(files, corr, ncores = bigstatsr::nb_cores()) {
       add_sens_FDP(corr) %>%
       dplyr::select(-c(num.simu, true_set, set, pheno, pred))
 
-  }, p.combine = dplyr::bind_rows, ind = seq_along(files), ncores = ncores, corr = corr)
+  }, p.combine = bind_rows, ind = seq_along(files), ncores = ncores, corr = corr)
 }
 
 ################################################################################
