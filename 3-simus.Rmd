@@ -98,7 +98,7 @@ for (i in rows_along(params.grid1)) {
   res <- bind_rows(
     # PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
-    logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
+    # logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple"),
     ttrees("../TTree-source/TTree", "backingfiles/ttrees", 
            pheno.all, ind.train, ind.test, n.trees = 100)
   )
