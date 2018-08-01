@@ -14,7 +14,7 @@ utils::globalVariables(
 #' @param x Data frame containing variables "true_set" and "set".
 #' @param corr Sparse correlation matrix of the genotype matrix.
 #'
-#' @return `x` with 2 new variables "AltSens" and "AltFDP".
+#' @return `x` with 3 new variables: "AltSens", "AltFDP" and "nb.preds".
 #' @import Matrix
 #'
 add_sens_FDP <- function(x, corr) {
@@ -36,7 +36,8 @@ add_sens_FDP <- function(x, corr) {
 
   x %>%
     dplyr::mutate(AltSens = unlist(alt[[1]]),
-                  AltFDP  = unlist(alt[[2]]))
+                  AltFDP  = unlist(alt[[2]]),
+                  nb.preds = purrr::map_int(set, length))
 }
 
 ################################################################################

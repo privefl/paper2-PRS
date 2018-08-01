@@ -12,7 +12,7 @@ add_sens_FDP(x, corr)
 \item{corr}{Sparse correlation matrix of the genotype matrix.}
 }
 \value{
-\code{x} with 2 new variables "AltSens" and "AltFDP".
+\code{x} with 3 new variables: "AltSens", "AltFDP" and "nb.preds".
 }
 \description{
 Compute alternative sensitivity & False Discovery Proportion from

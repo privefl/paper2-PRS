@@ -5,8 +5,8 @@
 \title{Simulate phenotypes}
 \usage{
 get_pheno(G, h2, M, ind.possible = bigstatsr::cols_along(G),
-  effects.dist = c("gaussian", "laplace"), model = c("simple", "fancy"),
-  K = 0.3)
+  effects.dist = c("gaussian", "laplace"), model = c("simple",
+  "fancy"), K = 0.3)
 }
 \arguments{
 \item{G}{Matrix of genotypes.}

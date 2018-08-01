@@ -4,8 +4,8 @@
 \alias{logit.CMSA}
 \title{Sparse Logistic Regression}
 \usage{
-logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, method, alphas = c(1,
-  0.5, 0.05, 0.001), ncores = nb_cores())
+logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, method,
+  alphas = c(1, 0.5, 0.05, 0.001), ncores = nb_cores())
 }
 \arguments{
 \item{G}{A \link[=FBM.code256-class]{FBM.code256}
