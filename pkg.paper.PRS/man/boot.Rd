@@ -4,7 +4,7 @@
 \alias{boot}
 \title{Bootstrap}
 \usage{
-boot(x, n = 1e+05, f = mean)
+boot(x, n = getOption("nboot"), f = mean)
 }
 \arguments{
 \item{x}{Vector of results.}

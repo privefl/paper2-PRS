@@ -111,7 +111,7 @@ c_method_r2 <- function(method, r2) {
 #' @return Standard deviation of bootstrap results.
 #' @export
 #'
-boot <- function(x, n = 1e5, f = mean) {
+boot <- function(x, n = getOption("nboot"), f = mean) {
   stats::sd(replicate(n, f(sample(x, replace = TRUE))))
 }
 
