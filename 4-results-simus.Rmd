@@ -320,7 +320,7 @@ results4 <- list.files("results4", full.names = TRUE) %>%
   read_format_results(corr)
 ```
 
-```{r, fig.asp = 1, out.width = "90%"}
+```{r}
 results4 %>%
   filter(method %in% c("logit-simple", "PRS-max")) %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
