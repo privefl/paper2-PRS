@@ -48,9 +48,9 @@ barplot_causal <- function(results) {
   results %>%
     myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
     geom_hline(yintercept = 0.5, linetype = 2) +
-    geom_col(position = position_dodge(), alpha = 0.3) +
+    geom_col(position = position_dodge(), alpha = 0.5, color = "black", size = 1) +
     geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, ymax = AUC_mean + 2 * AUC_boot),
-                  position = position_dodge(width = 0.9), color = "black", width = 0.2) + 
+                  position = position_dodge(width = 0.9), color = "black", width = 0.2, size = 1) + 
     scale_y_continuous(limits = c(0.5, NA), minor_breaks = 0:20 / 20,
                        oob = scales::rescale_none) +
     labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
@@ -214,14 +214,15 @@ ggsave("figures/supp-AUC-PRS-fancy.pdf", scale = 1/110, width = 1242, height = 9
 ### Different r2 thresholds
 
 ```{r}
-results2 %>%
+results2.all.r2 <- results2 %>%
   filter(par.model == "simple", method %in% c("logit-simple", "PRS-max")) %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
-  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
-  barplot_causal_all()
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
+  
+barplot_causal_all(results2.all.r2)
 
-ggsave("figures/main-AUC-all-r2.pdf", scale = 1/110, width = 1242, height = 951)
+ggsave("figures/supp-AUC-all-r2.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 ```{r}
@@ -326,7 +327,9 @@ results4 %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
-  barplot_causal_all()
+  barplot_causal_all() + 
+  geom_col(aes(par.causal, AUC_mean), data = results2.all.r2, 
+           position = position_dodge(), color = "black", alpha = 0)
 
 ggsave("figures/supp-AUC-chr6-all-r2.pdf", scale = 1/110, width = 1242, height = 951)
 ```
