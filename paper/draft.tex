@@ -243,9 +243,9 @@ logit-triple & 0.892 (0.000488) & 0.0429 (0.000174) & 4470 (80.6) & 141 (1.85) \
 
 \subsection{Joint estimation improves predictive performance}
 
-[REFAIRE] In this comparative study, we present a computationally efficient implementation of penalized logistic regression. 
+In this comparative study, we present a computationally efficient implementation of penalized logistic regression. 
 This model can be used to build polygenic risk scores based on very large SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. 
-In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to substantially improve predictive performance as compared to the standard C+T approach in which SNP effects are learned independently. Penalized logistic regression consistently outperform the C+T method, except in the case where there are only small effects and sample size is limited, in which case all methods perform poorly. 
+In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to substantially improve predictive performance as compared to the standard C+T approach in which SNP effects are learned independently. Penalized logistic regression nearly always outperform the C+T method, and the benefits of using it are stronger with an increasing sample size or when causal SNPs are correlated with one another.
 
 \subsection{Importance of hyper-parameters}
 
