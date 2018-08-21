@@ -13,29 +13,23 @@ options(width = 95)
 
 ```{r}
 library(tidyverse)
-myggplot <- function(..., coeff = 1) {
-  ggplot(...) + bigstatsr::theme_bigstatsr(size.rel = coeff)
-} 
+library(bigsnpr)
+library(pkg.paper.PRS)
 ```
 
 ## Data
 
 ```{r, cache=FALSE}
 # Read file, see "Preprocessing" notebook
-library(bigsnpr)
 celiac <- snp_attach("backingfiles/celiacQC.rds")
 G <- celiac$genotypes
 CHR <- celiac$map$chromosome
 POS <- celiac$map$physical.pos
 NCORES <- nb_cores()
 y <- celiac$fam$affection - 1
+obj.svd <- readRDS("backingfiles/PCA.rds")
 
 G2 <- big_attach("backingfiles/celiacQC_tripled1.rds")
-```
-
-```{r, cache=TRUE}
-# Compute PCA
-obj.svd <- snp_autoSVD(G, CHR, POS, ncores = NCORES)
 ```
 
 ## Predictive models and plots
@@ -108,22 +102,18 @@ nb.pred[which.max(aucs)]
 ```
 
 ```{r}
-pAUC <- function(pred, target, p = 0.1) {
-  val.min <- min(target)
-  q <- quantile(pred[target == val.min], probs = 1 - p)
-  ind <- (target != val.min) | (pred > q)
-  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
-           error = function(e) p^2 / 2)  # all same prediction
-}
+pAUC <- pkg.paper.PRS:::pAUC
+
 plot_density_AUC <- function(pred, true = y[ind.test]) {
   true_fct <- forcats::fct_recode(as.factor(true), "Control" = "0", "Case" = "1")
   data.frame(Score = pred, Status = true_fct) %>%
-  myggplot() +
+  ggplot() +
   geom_density(aes(Score, fill = Status), alpha = 0.4) +
   ggtitle(sprintf("AUC = %s%% | pAUC = %s", 
                   round(100 * AUC(pred, true), 2),
                   round(pAUC(pred, true), 4))) + 
-  theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
+    theme_bigstatsr() +
+    theme(plot.title = element_text(size = rel(1.5), hjust = 0.5))
 }
 (p1 <- plot_density_AUC(prs[, which.max(aucs)]))
 ```
@@ -139,20 +129,17 @@ system.time(
   logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
                         ind.train = ind.train, 
                         covar.train = obj.svd$u[ind.train, ],
-                        ncores = NCORES, alpha = 0.5)
+                        ncores = NCORES, alphas = 1)
 )
 # Get K = 10 predictions/individuals
 preds1 <- predict(logit, X = G, ind.row = ind.test, 
                   covar.row = obj.svd$u[ind.test, ])
 (nb.pred1 <- sum(rowSums(sapply(logit, function(l) l$beta.X != 0)) > 0))
-(aucs1 <- apply(preds1, 2, AUC, target = y[ind.test]))
-# Combining all K predictions
-preds1.comb <- rowMeans(preds1)
-AUC(preds1.comb, y[ind.test])
+(aucs1 <- AUC(preds1, target = y[ind.test]))
 ```
 
 ```{r}
-(p2 <- plot_density_AUC(preds1.comb))
+(p2 <- plot_density_AUC(preds1))
 ```
 
 ### Logistic regression with feature engineering
@@ -162,20 +149,17 @@ system.time(
   logit2 <- big_spLogReg(X = G2, y01.train = y[ind.train], 
                          ind.train = ind.train, 
                          covar.train = obj.svd$u[ind.train, ],
-                         ncores = NCORES, alphas = 0.5)
+                         ncores = NCORES, alphas = 1)
 )
 
 preds2 <- predict(logit2, X = G2, ind.row = ind.test, 
                   covar.row = obj.svd$u[ind.test, ])
 (nb.pred2 <- sum(rowSums(sapply(logit2, function(l) l$beta.X != 0)) > 0))
-(aucs2 <- apply(preds2, 2, AUC, target = y[ind.test]))
-# Combining all K predictions
-preds2.comb <- rowMeans(preds2)
-AUC(preds2.comb, y[ind.test])
+(aucs2 <- AUC(preds2, target = y[ind.test]))
 ```
 
 ```{r}
-(p3 <- plot_density_AUC(preds2.comb))
+(p3 <- plot_density_AUC(preds2))
 ```
 
 ```{r, out.width="70%", fig.asp=900/780}
@@ -194,8 +178,8 @@ library(plotROC)
 scores_tidy <- tibble(
   d = y[ind.test], 
   "PRS-max"      = prs[, which.max(aucs)],
-  "logit-simple" = preds1.comb,
-  "logit-triple" = preds2.comb
+  "logit-simple" = preds1,
+  "logit-triple" = preds2
 ) %>%
   gather(key = "Method", value = "Score", -d)
   
@@ -203,10 +187,9 @@ methods.color <- setNames(scales::hue_pal()(6),
                           c("logit-simple", "PRS-max", "PRS-stringent",
                             "T-Trees", "logit-triple", "PRS-all")) 
 
-bigstatsr:::MY_THEME(
-  ggplot(scores_tidy, aes(d = d, m = Score, color = Method, linetype = Method)) +
-    style_roc(xlab = "1 - Specificity", ylab = "Sensitivity")
-) +
+ggplot(scores_tidy, aes(d = d, m = Score, color = Method, linetype = Method)) +
+  style_roc(xlab = "1 - Specificity", ylab = "Sensitivity") +
+  theme_bigstatsr() +
   geom_roc(n.cuts = 0, size = 2) +
   theme(legend.position = c(0.7, 0.3), legend.key.width = unit(4, "line")) +
   coord_equal() +
@@ -215,33 +198,6 @@ bigstatsr:::MY_THEME(
 
 ```{r}
 ggsave("figures/celiac-roc.pdf", scale = 1/90, width = 700, height = 700)
-```
-
-
-## Top scores
-
-First, we get the most significant SNP.
-
-```{r}
-# Most significant SNP
-theone <- which.max(-predict(gwas.train.gc))
-ind0 <- which(G[ind.test, theone] == 0)
-(M <- length(ind0))
-table(Geno = G[, theone], forcats::fct_recode(as.factor(y), Control = "0", Case = "1"))
-```
-
-```{r}
-# one geno
-mean(y[ind.test[ind0]]) 
-# prs max
-indPRS <- order(prs[, which.max(aucs)], decreasing = TRUE)[1:M]
-mean(y[ind.test[indPRS]])
-# logit-simple (CMSA)
-indLS <- order(preds1.comb, decreasing = TRUE)[1:M]
-mean(y[ind.test[indLS]])
-# logit-triple (CMSA)
-indLT <- order(preds2.comb, decreasing = TRUE)[1:M]
-mean(y[ind.test[indLT]])
 ```
 
 
@@ -255,82 +211,6 @@ Each method's function returns a tibble (data frame) with 4 columns:
 2. the predictive scores and true phenotypes for the test set, as a [list-column](http://r4ds.had.co.nz/many-models.html),
 3. the timing of the main computations (in seconds),
 4. the number of SNPs used for the prediction.
-
-#### PRS
-
-```{r}
-PRS <- function(G, infos.chr, infos.pos, 
-                pheno.all, covar.all, 
-                ind.train, ind.test) {
-  
-  timing <- system.time({
-      
-    # GWAS
-    gwas.train <- big_univLogReg(
-      G, pheno.all[ind.train], ind.train = ind.train, 
-      covar.train = covar.all[ind.train, , drop = FALSE], 
-      ncores = nb_cores()
-    )
-    gwas.train.gc <- snp_gc(gwas.train)
-    
-    # Clumping on the test set
-    ind.keep <- snp_clumping(G, infos.chr = infos.chr,
-                             ind.row = ind.test,
-                             thr.r2 = 0.2, 
-                             S = abs(gwas.train.gc$score),
-                             size = 500,
-                             is.size.in.bp = TRUE,
-                             infos.pos = infos.pos,
-                             ncores = nb_cores())
-    
-    # PRS
-    thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
-    lpS <- -predict(gwas.train.gc)
-    nb.pred <- sapply(thrs, function(thr) sum(lpS[ind.keep] > thr))
-    prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
-                   ind.test = ind.test,
-                   ind.keep = ind.keep,
-                   lpS.keep = lpS[ind.keep], 
-                   thr.list = thrs)
-  })[3]
-  
-  ind.best <- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
-  
-  tibble(
-    method = "PRS-max",
-    eval = list(cbind(prs[, ind.best], pheno.all[ind.test])),
-    timing = timing,
-    nb.preds = nb.pred[ind.best]
-  )
-}
-```
-
-#### Logistic regression
-
-```{r}
-logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method, print_all = FALSE) {
-  
-  timing <- system.time({
-    
-    cmsa.logit <- big_spLogReg(X = G, y01.train = pheno.all[ind.train], 
-                               ind.train = ind.train, 
-                               covar.train = covar.all[ind.train, , drop = FALSE],
-                               ncores = NCORES, alphas = 0.5)
-    
-    preds.all <- predict(cmsa.logit, X = G, ind.row = ind.test, 
-                         covar.row = covar.all[ind.test, , drop = FALSE])
-    if (print_all) print(preds.all)
-    preds <- rowMeans(preds.all)
-  })[3]
-  
-  tibble(
-    method   = method, 
-    eval     = list(cbind(preds, pheno.all[ind.test])),
-    timing   = timing,
-    nb.preds = sum(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) > 0)
-  )
-}
-```
 
 ### Run multiple times
 
@@ -350,39 +230,25 @@ for (i in 1:100) {
     
   # Get results from all methods
   res <- bind_rows(
-    PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
+    filter(PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test), thr.r2 == 0.2),
     logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple"),
     logit.CMSA(G2, pheno.all, covar.all, ind.train, ind.test, "logit-triple")
   )
+  res$pheno <- list(pheno.all[ind.test])
+  
   saveRDS(res, file = res.file)
 }
 ```
 
 ```{r}
-pAUC <- function(pred, target, p = 0.1) {
-  val.min <- min(target)
-  q <- quantile(pred[target == val.min], probs = 1 - p)
-  ind <- (target != val.min) | (pred > q)
-  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
-           error = function(e) p^2 / 2)  # all same prediction
-}
-
-format_results <- function(results) {
-  results %>%
-    as_tibble() %>%
-    mutate(
-      AUC = map_dbl(eval, ~ bigstatsr::AUC(.x[, 1], .x[, 2])),
-      pAUC = map_dbl(eval, ~ pAUC(.x[, 1], .x[, 2]))
-    )
-}
-
-boot <- function(x, n = 1e5, f = mean) {
-  sd(replicate(n, f(sample(x, replace = TRUE))))
-}
-
 list.files(path = "results6/", full.names = TRUE) %>%
   map_df(readRDS) %>%
-  format_results() %>%
+  as_tibble() %>%
+  mutate(
+    AUC = map2_dbl(pred, pheno, ~bigstatsr::AUC(.x, .y)),
+    pAUC = map2_dbl(pred, pheno, ~pAUC(.x, .y)),
+    nb.preds = map_int(set, length)
+  ) %>%
   group_by(method) %>%
   summarize_at(c("AUC", "pAUC", "nb.preds", "timing"), function(x) {
     glue::glue("{signif(mean(x), 3)} ({signif(boot(x), 3)})")
