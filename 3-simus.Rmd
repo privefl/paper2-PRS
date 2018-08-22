@@ -262,13 +262,108 @@ for (i in rows_along(params.grid5)) {
   # Get results from all methods
   res <- bind_rows(
     PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
-    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, "logit-simple")
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, "logit-simple")
   )
   params[["res"]] <- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
 }
 ```
 
+
+### Scenario n°1 (comparison with biglasso)
+
+```{r}
+library(biglasso)
+library(Matrix)
+```
+
+```{r, eval=FALSE}
+G3 <- bigmemory::big.matrix(nrow(G), ncol(G) + ncol(covar.all),
+                            backingfile = "G-PC",                 
+                            backingpath = "backingfiles")
+big_apply(G, function(X, ind) { G3[, ind] <- X[, ind]; NULL }, a.combine = 'c')
+G3[, ncol(G) + cols_along(covar.all)] <- covar.all
+```
+
+```{r}
+G3 <- bigmemory::attach.big.matrix("backingfiles/G-PC.desc")
+```
+
+
+```{r}
+logit.biglasso <- function(G3, pheno.all, covar.all, ind.train, ind.test) {
+  
+  timing <- system.time({
+    
+    biglasso <- biglasso(G3, pheno.all, ind.train, ncores = nb_cores(),
+                         penalty = "lasso", alpha = 1, family = "binomial")
+    
+    preds <- 1 / (1 + exp(-predict(biglasso, G3, ind.test)))
+  })[3]
+  
+  aucs <- apply(preds, 2, bigstatsr::AUC, target = pheno.all[ind.test])
+  ind.max <- which.max(aucs)
+  
+  tibble(
+    method   = "biglasso", 
+    pred     = list(preds[, ind.max]),
+    timing   = timing,
+    alpha    = 1,
+    set      = list(which(head(biglasso$beta[, ind.max], -ncol(covar.all)) != 0))
+  )
+}
+```
+
+
+```{r}
+params.grid7 <- expand.grid(
+  n.train = 6000,
+  par.causal = list(c(30, "all"), c(300, "all"), c(3000, "all"), c(30, "HLA")), 
+  par.dist   = c("gaussian", "laplace"), 
+  par.h2     = c(0.8), 
+  par.model  = c("simple"),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) 
+```
+
+```{r, eval=TRUE}
+if (!dir.exists("results7")) dir.create("results7")
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file <- paste0("results7/simu_", i, ".rds")
+  if (file.exists(res.file)) next
+  
+  params <- params.grid7[i, ]
+  par.causal <- params[["par.causal"]][[1]]
+  
+  # Simulate phenotypes
+  simu_pheno <- get_pheno(
+    G,    
+    h2 = params[["par.h2"]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    effects.dist = params[["par.dist"]], 
+    model = params[["par.model"]]
+  )
+  pheno.all <- simu_pheno$pheno
+  params[["true_set"]] <- list(simu_pheno$set)
+  
+  # Split in training/test sets
+  ind.train <- sort(sample(n, size = params[["n.train"]]))
+  ind.test <- setdiff(1:n, ind.train)
+  params[["pheno"]] <- list(pheno.all[ind.test])
+    
+  # Get results from all methods
+  res <- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, "logit-simple", alphas = 1),
+    logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
+  )
+  params[["res"]] <- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}
+```
 
 
 

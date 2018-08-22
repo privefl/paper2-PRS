@@ -27,9 +27,9 @@ options(nboot = 1e4)
 ```{r, message=FALSE}
 COLORS <- scales::hue_pal()(6)
 methods.color <- setNames(
-  c(COLORS, COLORS[c(4, 2, 5)]), 
+  c(COLORS, COLORS[c(4, 2, 5)], "black"), 
   c("logit-simple", "PRS-max", "PRS-stringent", "T-Trees", "logit-triple", "PRS-all",
-    "PRS-max-0.05", "PRS-max-0.2", "PRS-max-0.8")
+    "PRS-max-0.05", "PRS-max-0.2", "PRS-max-0.8", "biglasso")
 ) 
 ```
 
@@ -368,4 +368,14 @@ results6 %>%
   theme(legend.key.width = unit(3, "line"))
 
 ggsave("figures/main-AUC-ntrain.pdf", scale = 1/100, width = 1050, height = 800)
+```
+
+### Comparison with biglasso
+
+```{r, fig.asp=0.65, out.width="95%", fig.width=16}
+list.files("results7", full.names = TRUE) %>%
+  read_format_results(corr) %>%
+  compare_logit("biglasso")
+
+ggsave("figures/supp-biglasso.pdf", scale = 1/100, width = 1600, height = 1000)
 ```
