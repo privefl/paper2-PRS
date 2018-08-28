@@ -1,13 +1,12 @@
 ---
 title: "Simulations"
 author: "Florian Privé"
-date: "October 20, 2017"
+date: "August 28, 2018"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(fig.align = "center", out.width = "70%", 
-                      fig.asp = 0.7)
+knitr::opts_chunk$set(fig.align = "center", out.width = "70%", fig.asp = 0.7)
 options(width = 85)
 ```
 
@@ -272,7 +271,7 @@ for (i in rows_along(params.grid5)) {
 
 ### Scenario n°1 (comparison with biglasso)
 
-```{r}
+```{r, message=FALSE}
 library(biglasso)
 library(Matrix)
 ```

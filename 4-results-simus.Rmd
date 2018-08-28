@@ -19,7 +19,7 @@ library(tidyverse)
 library(bigsnpr)
 # devtools::install_github("privefl/paper2-PRS/pkg.paper.PRS")
 library(pkg.paper.PRS)  ## See code source for functions' code.
-options(nboot = 1e4)
+options(nboot = 1e5)
 ```
 
 ## Useful functions

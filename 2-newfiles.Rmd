@@ -1,7 +1,7 @@
 ---
 title: "New files"
 author: "Florian Privé"
-date: "20 octobre 2017"
+date: "October 20, 2017"
 output: html_document
 ---
 

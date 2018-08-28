@@ -11,7 +11,7 @@
 
 <meta name="author" content="Florian Privé" />
 
-<meta name="date" content="2017-10-20" />
+<meta name="date" content="2018-08-28" />
 
 <title>Simulations</title>
 
@@ -124,7 +124,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Simulations</h1>
 <h4 class="author"><em>Florian Privé</em></h4>
-<h4 class="date"><em>October 20, 2017</em></h4>
+<h4 class="date"><em>August 28, 2018</em></h4>
 
 </div>
 
@@ -354,7 +354,83 @@ for (i in rows_along(params.grid5)) {
   # Get results from all methods
   res &lt;- bind_rows(
     PRS(G, CHR, POS, pheno.all, covar.all, ind.train, ind.test),
-    logit.CMSA(G,  pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;)
+  )
+  params[[&quot;res&quot;]] &lt;- list(res)
+  saveRDS(unnest(params, res, .drop = FALSE), file = res.file)
+}</code></pre>
+</div>
+<div id="scenario-n1-comparison-with-biglasso" class="section level3">
+<h3>Scenario n°1 (comparison with biglasso)</h3>
+<pre class="r"><code>library(biglasso)
+library(Matrix)</code></pre>
+<pre class="r"><code>G3 &lt;- bigmemory::big.matrix(nrow(G), ncol(G) + ncol(covar.all),
+                            backingfile = &quot;G-PC&quot;,                 
+                            backingpath = &quot;backingfiles&quot;)
+big_apply(G, function(X, ind) { G3[, ind] &lt;- X[, ind]; NULL }, a.combine = 'c')
+G3[, ncol(G) + cols_along(covar.all)] &lt;- covar.all</code></pre>
+<pre class="r"><code>G3 &lt;- bigmemory::attach.big.matrix(&quot;backingfiles/G-PC.desc&quot;)</code></pre>
+<pre class="r"><code>logit.biglasso &lt;- function(G3, pheno.all, covar.all, ind.train, ind.test) {
+  
+  timing &lt;- system.time({
+    
+    biglasso &lt;- biglasso(G3, pheno.all, ind.train, ncores = nb_cores(),
+                         penalty = &quot;lasso&quot;, alpha = 1, family = &quot;binomial&quot;)
+    
+    preds &lt;- 1 / (1 + exp(-predict(biglasso, G3, ind.test)))
+  })[3]
+  
+  aucs &lt;- apply(preds, 2, bigstatsr::AUC, target = pheno.all[ind.test])
+  ind.max &lt;- which.max(aucs)
+  
+  tibble(
+    method   = &quot;biglasso&quot;, 
+    pred     = list(preds[, ind.max]),
+    timing   = timing,
+    alpha    = 1,
+    set      = list(which(head(biglasso$beta[, ind.max], -ncol(covar.all)) != 0))
+  )
+}</code></pre>
+<pre class="r"><code>params.grid7 &lt;- expand.grid(
+  n.train = 6000,
+  par.causal = list(c(30, &quot;all&quot;), c(300, &quot;all&quot;), c(3000, &quot;all&quot;), c(30, &quot;HLA&quot;)), 
+  par.dist   = c(&quot;gaussian&quot;, &quot;laplace&quot;), 
+  par.h2     = c(0.8), 
+  par.model  = c(&quot;simple&quot;),
+  num.simu   = 1:100,
+  stringsAsFactors = FALSE
+) </code></pre>
+<pre class="r"><code>if (!dir.exists(&quot;results7&quot;)) dir.create(&quot;results7&quot;)
+
+for (i in rows_along(params.grid7)) {
+  
+  res.file &lt;- paste0(&quot;results7/simu_&quot;, i, &quot;.rds&quot;)
+  if (file.exists(res.file)) next
+  
+  params &lt;- params.grid7[i, ]
+  par.causal &lt;- params[[&quot;par.causal&quot;]][[1]]
+  
+  # Simulate phenotypes
+  simu_pheno &lt;- get_pheno(
+    G,    
+    h2 = params[[&quot;par.h2&quot;]], 
+    M = as.integer(par.causal[1]), 
+    ind.possible = `if`(par.causal[2] == &quot;all&quot;, cols_along(G), ind.HLA),
+    effects.dist = params[[&quot;par.dist&quot;]], 
+    model = params[[&quot;par.model&quot;]]
+  )
+  pheno.all &lt;- simu_pheno$pheno
+  params[[&quot;true_set&quot;]] &lt;- list(simu_pheno$set)
+  
+  # Split in training/test sets
+  ind.train &lt;- sort(sample(n, size = params[[&quot;n.train&quot;]]))
+  ind.test &lt;- setdiff(1:n, ind.train)
+  params[[&quot;pheno&quot;]] &lt;- list(pheno.all[ind.test])
+    
+  # Get results from all methods
+  res &lt;- bind_rows(
+    logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, &quot;logit-simple&quot;, alphas = 1),
+    logit.biglasso(G3, pheno.all, covar.all, ind.train, ind.test)
   )
   params[[&quot;res&quot;]] &lt;- list(res)
   saveRDS(unnest(params, res, .drop = FALSE), file = res.file)

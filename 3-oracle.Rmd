@@ -19,26 +19,14 @@ options(width = 110)
 ```{r, message=FALSE}
 library(tidyverse)
 library(bigsnpr)
-library(foreach)
+library(doParallel)
 celiac2 <- snp_attach("backingfiles/celiacQC_sub1.rds")
 CHR <- celiac2$map$chromosome
 POS <- celiac2$map$physical.pos
-(G <- celiac2$genotypes)
+G <- celiac2$genotypes
 ind.HLA <- snp_indLRLDR(CHR, POS, subset(LD.wiki34, ID == "hild12"))
-NCORES <- nb_cores()
 ```
 
-```{r}
-myggplot <- function(..., coeff = 1) {
-  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff)
-} 
-```
-
-```{r}
-boot <- function(x, n = 1e5, f = mean) {
-  sd(replicate(n, f(sample(x, replace = TRUE))))
-}
-```
 
 ## Get maximum AUCs
 
@@ -70,16 +58,18 @@ Assuming that $y \sim N(0, h^2)$ and knowing that $\epsilon \sim N(0, 1-h^2)$, w
 ```{r}
 nsimu <- 1e7
 
-doParallel::registerDoParallel(NCORES)
+registerDoParallel(cl <- makeCluster(nb_cores()))
 aucs <- foreach(i = seq_len(100), .combine = "cbind") %:%
   foreach(h2 = c(0.5, 0.8), .combine = "rbind") %dopar% {
+    
     S <- rnorm(nsimu, mean = 0, sd = sqrt(h2))
     E <- rnorm(nsimu, mean = 0, sd = sqrt(1 - h2))
     Y <- (S + E) > qnorm(1 - K)
     
     bigstatsr::AUC(S, Y)
   }
-doParallel::stopImplicitCluster()
+stopCluster(cl)
+
 apply(aucs, 1, summary)
 ```
 
@@ -127,7 +117,7 @@ get_oracle <- function(
   S <- y.simu
   y.simu <- S + rnorm(nrow(G), sd = sqrt(1 - h2))
   pheno <- as.numeric(y.simu > qnorm(1 - K))
-  AUC(S, pheno)
+  bigstatsr::AUC(S, pheno)
 }
 ```
 
@@ -152,7 +142,7 @@ AUC_oracle <- function(G, params, ind.HLA) {
     G,    
     h2 = params[["par.h2"]], 
     M = as.integer(par.causal[1]), 
-    ind.possible = `if`(par.causal[2] == "all", cols_along(G), ind.HLA),
+    ind.possible = `if`(par.causal[2] == "all", bigstatsr::cols_along(G), ind.HLA),
     effects.dist = params[["par.dist"]], 
     model = params[["par.model"]], 
     K = 0.3                 
@@ -163,14 +153,18 @@ AUC_oracle <- function(G, params, ind.HLA) {
 }
 ```
 
-#### On all 22 chromosomes
+#### With all 22 chromosomes
 
 ```{r}
-doParallel::registerDoParallel(NCORES)
+registerDoParallel(cl <- makeCluster(nb_cores()))
 oracles <- foreach(i = rows_along(params.grid2), .combine = "rbind") %dopar% {
   AUC_oracle(G, params.grid2[i, ], ind.HLA)
 }
-doParallel::stopImplicitCluster()
+stopCluster(cl)
+```
+
+```{r}
+boot <- pkg.paper.PRS::boot
 ```
 
 
@@ -179,34 +173,37 @@ oracles %>%
   mutate(
     par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
                         levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
-  group_by(par.causal, par.dist, par.h2, par.model) %>%
+  group_by_at(vars(starts_with("par"))) %>%
   summarise(AUC_mean = round(mean(AUC), 4),
             AUC_mean_boot = round(boot(AUC), 4)) %>%
+  arrange(AUC_mean) %>%
   print(n = Inf)
 ```
 
-#### On only the chromosome 6
+#### With chromosome 6 only
 
 ```{r}
 G6 <- big_copy(G, ind.col = which(CHR == 6))
 ind.HLA6 <- snp_indLRLDR(CHR[CHR == 6], POS[CHR == 6], 
                          subset(LD.wiki34, ID == "hild12"))
 
-doParallel::registerDoParallel(NCORES)
+registerDoParallel(cl <- makeCluster(nb_cores()))
 oracles_chr6 <- foreach(i = rows_along(params.grid2), .combine = "rbind") %dopar% {
   AUC_oracle(G6, params.grid2[i, ], ind.HLA6)
 }
-doParallel::stopImplicitCluster()
+stopCluster(cl)
 ```
 
+
 ```{r}
-tmp <- oracles_chr6 %>% 
+oracles_chr6 %>% 
   mutate(
     par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
                         levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
-  group_by(par.causal, par.dist, par.h2, par.model) %>%
+  group_by_at(vars(starts_with("par"))) %>%
   summarise(AUC_mean = round(mean(AUC), 4),
             AUC_mean_boot = round(boot(AUC), 4)) %>%
+  arrange(AUC_mean) %>%
   print(n = Inf)
 ```
 
