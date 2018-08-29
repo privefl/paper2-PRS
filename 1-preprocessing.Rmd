@@ -13,7 +13,7 @@ options(width = 85)
 
 ### QC and imputation
 
-This was done in [another paper](https://doi.org/10.1101/190926).
+This was done in [another paper](https://doi.org/10.1093/bioinformatics/bty185).
 
 ```{r}
 library(bigsnpr)
