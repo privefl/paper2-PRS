@@ -21,6 +21,7 @@ Imports:
     bigstatsr,
     bigsnpr,
     stats,
+    stringr,
     tibble,
     glue,
     utils,

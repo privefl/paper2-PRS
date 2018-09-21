@@ -19,7 +19,7 @@ library(tidyverse)
 library(bigsnpr)
 # devtools::install_github("privefl/paper2-PRS/pkg.paper.PRS")
 library(pkg.paper.PRS)  ## See code source for functions' code.
-options(nboot = 1e5)
+options(nboot = 1e3)
 ```
 
 ## Useful functions
@@ -28,8 +28,8 @@ options(nboot = 1e5)
 COLORS <- scales::hue_pal()(6)
 methods.color <- setNames(
   c(COLORS, COLORS[c(4, 2, 5)], "black"), 
-  c("logit-simple", "PRS-max", "PRS-stringent", "T-Trees", "logit-triple", "PRS-all",
-    "PRS-max-0.05", "PRS-max-0.2", "PRS-max-0.8", "biglasso")
+  c("PLR", "C+T-max", "C+T-stringent", "T-Trees", "PLR3", "C+T-all",
+    "C+T-max-0.05", "C+T-max-0.2", "C+T-max-0.8", "biglasso")
 ) 
 ```
 

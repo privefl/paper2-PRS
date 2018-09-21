@@ -58,6 +58,30 @@ add_AUC <- function(x, pAUC) {
 
 ################################################################################
 
+sub_list <- function(x, from, to) {
+  for (i in seq_along(from)) {
+    x <- sub(from[[i]], to[[i]], x)
+  }
+  x
+}
+
+rename_lvl <- function(x) {
+
+  methods  <- c("PRS-all", "PRS-stringent", "PRS-max", "logit-simple", "logit-triple")
+  methods2 <- c("C+T-all", "C+T-stringent", "C+T-max", "PLR",          "PLR3")
+
+  dplyr::mutate(
+    x,
+    par.causal = factor(purrr::map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
+                        levels = c("30 in HLA", paste(3 * 10^(1:3), "in all"))),
+    par.dist = stringr::str_to_title(par.dist),
+    par.model = sub_list(par.model, c("simple", "fancy"), c("ADD", "COMP")),
+    method = sub_list(method, methods, methods2)
+  )
+}
+
+################################################################################
+
 #' Read & format results
 #'
 #' @param files Files to read from.
@@ -74,9 +98,7 @@ read_format_results <- function(files, corr, ncores = nb_cores()) {
     files[ind] %>%
       purrr::map_dfr(~readRDS(.x)) %>%
       tibble::as_tibble() %>%
-      dplyr::mutate(
-        par.causal = factor(purrr::map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
-                            levels = c("30 in HLA", paste(3 * 10^(1:3), "in all")))) %>%
+      rename_lvl() %>%
       add_AUC(pAUC) %>%
       add_sens_FDP(corr) %>%
       dplyr::select(-c(num.simu, true_set, set, pheno, pred))
