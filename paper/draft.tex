@@ -72,44 +72,44 @@
 \newpage
 
 \abstract{
-Polygenic Risk Scores (PRS) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRS might have a major public health impact, possibly allowing for screening campaigns to identify high-genetic risk individuals for a given disease.  
+Polygenic Risk Scores (PRS) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRS might have a major impact on public health, possibly allowing for screening campaigns to identify high-genetic risk individuals for a given disease.  
 The ``Clumping+Thresholding'' (C+T) approach, which is the most common method to derive PRS, uses only univariate genome-wide association studies (GWAS) summary statistics, which makes it fast and easy to use. 
 However, previous work showed that jointly estimating SNP effects for computing PRS has the potential to significantly improve the predictive performance of PRS as compared to C+T.
 
-In this paper, we present an efficient method to jointly estimate SNP effects, allowing for practical application of penalized logistic regression on modern datasets including hundreds of thousands of individuals. Moreover, our implementation of penalized logistic regression directly includes automatic choices for hyper-parameters. The choice of hyper-parameters for a predictive model is very important since it can dramatically impact its predictive performance. As an example, AUC values range from less than 60\% to 90\% in a model with 30 causal SNPs, depending on the p-value threshold in C+T.
+In this paper, we present an efficient method to jointly estimate SNP effects, allowing for practical application of penalized logistic regression (PLR) on modern datasets including hundreds of thousands of individuals. Moreover, our implementation of PLR directly includes automatic choices for hyper-parameters. The choice of hyper-parameters for a predictive model is very important since it can dramatically impact its predictive performance. As an example, AUC values range from less than 60\% to 90\% in a model with 30 causal SNPs, depending on the p-value threshold in C+T.
 
-We compare the performance of penalized logistic regression to the C+T method and to a derivation of random forests. 
-Penalized logistic regression consistently achieves higher predictive performance than the two other methods while being very fast. We find that improvement in predictive performance is more pronounced when there are few effects located in nearby genomic regions with correlated SNPs; AUC values increase from 83\% with the best prediction of C+T to 92.5\% with penalized logistic regression. We confirm these results in a data analysis of a case-control study for celiac disease where penalized logistic regression and the standard C+T method achieve AUC of 89\% and of 82.5\%.
+We compare the performance of PLR, C+T and a derivation of random forests using both real and simulated data. 
+PLR consistently achieves higher predictive performance than the two other methods while being as fast as C+T. 
+We find that improvement in predictive performance is more pronounced when there are few effects located in nearby genomic regions with correlated SNPs; for instance, AUC values increase from 83\% with the best prediction of C+T to 92.5\% with PLR. We confirm these results in a data analysis of a case-control study for celiac disease where PLR and the standard C+T method achieve AUC of 89\% and of 82.5\%.
 
-In conclusion, our study demonstrates that penalized logistic regression is applicable to large-scale individual-level data and can achieve more discriminative polygenic risk scores. Our implementation is publicly available in R package bigstatsr.\\
+In conclusion, our study demonstrates that penalized logistic regression can achieve more discriminative polygenic risk scores, while being applicable to large-scale individual-level data thanks to the implementation we provide in the R package bigstatsr.\\
 
-\textbf{Contact:} \href{florian.prive@univ-grenoble-alpes.fr}{florian.prive@univ-grenoble-alpes.fr} \& \href{michael.blum@univ-grenoble-alpes.fr}{michael.blum@univ-grenoble-alpes.fr}\\
-\textbf{Supplementary information:}
+\textbf{Contact:} \href{florian.prive@univ-grenoble-alpes.fr}{florian.prive@univ-grenoble-alpes.fr} \& \href{michael.blum@univ-grenoble-alpes.fr}{michael.blum@univ-grenoble-alpes.fr}
 }
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
+
 \section{Introduction}
 
 Polygenic Risk Scores (PRS) consist in combining the information across many single-nucleotide polymorphisms (SNPs) in a score reflecting the genetic risk of developing a disease. PRS are useful for genetic epidemiology when testing the polygenicity of one disease and finding a common genetic contribution between two diseases \cite[]{purcell2009common}. Personalized medicine is another major application of PRS. Personalized medicine envisions to use PRS in screening campaigns in order to identify high-risk individuals for a given disease \cite[]{chatterjee2016developing}. As an example of practical application, targeting screening to men at higher polygenic risk could reduce the problem of overdiagnosis and lead to a better benefit-to-harm balance in screening for prostate cancer \cite[]{pashayan2015implications}. 
 Yet, PRS would have to show a high discriminative power between cases and controls in order to be used for helping in the diagnosis of diseases. For screening high-risk individuals and for presymptomatic diagnosis of the general population, it is suggested that the AUC must be greater than 75\% and 99\% respectively \cite[]{janssens2007impact}.
 
-Several methods have been developed to predict disease status, or more generally any phenotype, based on SNP information. A commonly used method, called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') -- or even just PRS -- is used to derive PRS from results of Genome-Wide Association Studies (GWAS) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. This technique uses GWAS summary statistics only, allowing for fast implementation. However, the ``C+T'' approach also has several limitations. 
-Previous studies have shown that predictive performance of the C+T method is very sensitive to the threshold of inclusion of SNPs, depending on the disease architecture \cite[]{ware2017heterogeneity}.
-Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{lello2017accurate,yang2010common}. Yet, models resulting from LMM, known e.g.\ as ``gBLUP'', are not optimal for predicting disease status based on genotypes \cite[]{abraham2013performance}. Moreover, these methods and their derivatives are often computationally demanding, both in terms of memory and time required, which makes them unlikely to be used for prediction on very large datasets \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
+Several methods have been developed to predict disease status, or more generally any phenotype, based on SNP information. A commonly used method often called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') is used to derive PRS from results of Genome-Wide Association Studies (GWAS) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. This technique uses GWAS summary statistics only, allowing for a fast implementation of C+T. However, C+T also has several limitations; for instance, previous studies have shown that predictive performance of C+T is very sensitive to the threshold of inclusion of SNPs, depending on the disease architecture \cite[]{ware2017heterogeneity}.
+Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{lello2017accurate,yang2010common}. Yet, models resulting from LMM, known e.g.\ as ``gBLUP'', are not optimal for predicting disease status based on genotypes \cite[]{abraham2013performance}. Moreover, these methods and their derivatives are often computationally very demanding, both in terms of memory and time required, which makes them unlikely to be used for prediction on very large datasets \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
 Finally, statistical learning methods have also been used to derive PRS for complex human diseases by jointly estimating SNP effects. Such methods include joint logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2014exploiting,okser2014regularized,wei2009disease}.
 
 We recently developed two R packages, bigstatsr and bigsnpr, for efficiently analyzing large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr now includes an efficient algorithm with a new implementation for computing sparse linear and logistic regressions on huge datasets as large as the UK Biobank \cite[]{bycroft2017genome}.
-In this paper, we present a comprehensive comparative study of our implementation of penalized logistic regression against the C+T method and the T-Trees algorithm, a derivation of random forests that has shown high predictive performance \cite[]{botta2014exploiting}.
+In this paper, we present a comprehensive comparative study of our implementation of penalized logistic regression (PLR) against the C+T method and the T-Trees algorithm, a derivation of random forests that has shown high predictive performance \cite[]{botta2014exploiting}.
 In this comparison, we do not include any LMM method for the reasons mentioned before and do not include any SVM method because it is expected to give similar results to logistic regression \cite[]{abraham2012sparsnp}. 
-For the C+T model, we report results for a large grid of hyper-parameters. 
-For the penalized logistic regression, the choice of hyper-parameters is included in the algorithm so that we report only one model for each simulation. We also use this penalized logistic regression on a feature-augmented dataset in order to capture not only linear effects, but also recessive and dominant effects. 
+For C+T, we report results for a large grid of hyper-parameters. 
+For PLR, the choice of hyper-parameters is included in the algorithm so that we report only one model for each simulation. We also use a modified version of PLR in order to capture not only linear effects, but also recessive and dominant effects. 
 
-To perform simulations, we use real genotype data and simulate new phenotypes \cite[]{zhou2013polygenic}. 
-In order to make our comparison as comprehensive as possible, we compare different disease architectures by varying the number, size and location of causal effects as well as the heritability. We also compare different models for simulating phenotypes, one with only linear effects, and one that combines linear, dominant and interaction-type effects.
-Overall, we find that the penalized logistic regression consistently achieves higher predictive performance than the C+T and T-Trees methods while being very fast. This demonstrates the feasibility and relevance of this approach for PRS computation on large modern datasets. 
+To perform simulations, we use real genotype data and simulate new phenotypes. 
+In order to make our comparison as comprehensive as possible, we compare different disease architectures by varying the number, size and location of causal effects as well as the disease heritability. We also compare two different models for simulating phenotypes, one with additive effects only, and one that combines additive, dominant and interaction-type effects.
+Overall, we find that PLR consistently achieves higher predictive performance than the C+T and T-Trees methods while being as fast as C+T. This demonstrates the feasibility and relevance of this approach for PRS computation on large modern datasets. 
 
 
 
@@ -119,20 +119,21 @@ Overall, we find that the penalized logistic regression consistently achieves hi
 
 \subsection{Genotype data}
 
-We use real genotypes of European individuals from a case-control celiac disease study \cite[]{dubois2010multiple}. The composition of this dataset is presented in table \ref{tab:celiac-data}. Details of quality control and imputation for this dataset are available in \cite{prive2017efficient}. For simulations presented later, we first restrict this dataset to controls in order to remove the genetic structure induced by the celiac disease status. Then, we decided to remove population structure because it can affect the predictive performance of methods \cite[]{martin2017human}.
-In order to alleviate population structure, we keep people from the UK only and we further remove outliers based on a robust Mahalanobis distances computed using the first 10 principal components of the remaining individuals. This 3-step filtering process results in a sample of 7100 individuals with minimal population structure (see supplementary notebook ``preprocessing''). We also use this dataset for real data application, in this case keeping all 15,155 individuals (4496 cases and 10,659 controls). Both datasets contain 281,122 SNPs.
+We use real genotypes of European individuals from a case-control study for celiac disease \cite[]{dubois2010multiple}. The composition of this dataset is presented in table \ref{tab:celiac-data}. Details of quality control and imputation for this dataset are available in \cite{prive2017efficient}. For simulations presented later, we first restrict this dataset to controls from UK in order to remove the genetic structure induced by the celiac disease status and population structure. This filtering process results in a sample of 7100 individuals (see supplementary notebook ``preprocessing''). 
+We also use this dataset for real data application, in this case keeping all 15,155 individuals (4496 cases and 10,659 controls). Both datasets contain 281,122 SNPs.
 
 \subsection{Simulations of phenotypes} \label{sec:simus}
 
 We simulate binary phenotypes using a Liability Threshold Model (LTM) with a prevalence of 30\% \cite[]{falconer1965inheritance}. We vary parameters of the simulations in order to match a range of genetic architecture from low to high polygenicity. 
-This is achieved by varying the number of causal variants and their location (30, 300, or 3000 anywhere in all 22 chromosomes or 30 in the HLA region of chromosome 6), and the heritability (50\% or 80\%). 
-In a second phase, in order to further increase the proportion of causal variants, we restrict the dataset to chromosome 6 only (18,941 SNPs) instead of using all 22 automosal chromosomes (281,122 SNPs).
-We also consider deviation from the standard normal additive model, drawing effects of causal SNPs from either a Normal or from a Laplace distribution, and computing liability scores either from a ``simple'' model with linear effects only or a ``fancy'' model that combines linear, dominant and interaction-type effects. For the ``simple'' model, we compute the liability score of the i-th individual $$y_i = \sum_{j\in S_\text{causal}} w_j \cdot \widetilde{G_{i,j}} ~~+~~ \epsilon_i~,$$ where $w_j$ are weights generated from a Gaussian or a Laplace distribution, $G_{i,j}$ is the allele count of individual $i$ for SNP $j$, $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs), $\epsilon$ follows a Gaussian distribution $N(0, 1 - h^2)$ and $S_\text{causal}$ is the set of causal SNPs.
-For the ``fancy'' model, we simulate phenotypes using linear, dominant and interaction-type effects (see Supplementary Materials).
+This is achieved by varying the number of causal variants and their location (30, 300, or 3000 anywhere in all 22 autosomal chromosomes or 30 in the HLA region of chromosome 6), and the disease heritability (50\% or 80\%). 
+%SNP effects are drawn from either a Gaussian or from a Laplace distribution.
+Liability scores are computed either from an additive model with linear effects only (``ADD'') or a more complex model that combines additive, dominant and interaction-type effects (``COMP''). For model ``ADD'', we compute the liability score of the i-th individual $$y_i = \sum_{j\in S_\text{causal}} w_j \cdot \widetilde{G_{i,j}} ~~+~~ \epsilon_i~,$$ where $w_j$ are weights generated from a Gaussian or a Laplace distribution, $G_{i,j}$ is the allele count of individual $i$ for SNP $j$, $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs), $\epsilon$ follows a Gaussian distribution $N(0, 1 - h^2)$ and $S_\text{causal}$ is the set of causal SNPs.
+For model ``COMP'', we simulate liability scores using additive, dominant and interaction-type effects (see Supplementary Materials).
 
 We implement 3 different simulation scenarios, summarized in table \ref{tab:simus}.
-Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes) and a training set of size 6000. It compares all methods described in section \ref{sec:methods}. For each combination of the remaining parameters, results are based on 100 simulations excepted in the first simulation comparing penalized logistic regression with T-Trees; this simulation relies on 5 simulations only because of a much higher computational burden (several hours of computation for a single simulation) of T-Trees as compared to other approaches. Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only. Reducing the number of SNPs aims at increasing the polygenicity (the proportion of causal SNPs) of the simulated models and at virtually increasing the sample size \cite[]{dudbridge2013power,marquez2017multiethnic,vilhjalmsson2015modeling}.
-For this scenario, we use the additive (``simple'') model only, but continue to compare all previous different values of the other parameters. Finally, scenario \textnumero3 reuses the whole dataset but this time varying the size of the training set in order to assess how the sample size affects predictive performance of methods. A total of 100 simulations per combination of parameters are run using 300 causal SNPs randomly chosen anywhere on the genome.
+Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes -- 281,122 SNPs) and a training set of size 6000. It compares all methods described in section \ref{sec:methods}. For each combination of the remaining parameters, results are based on 100 simulations excepted when comparing PLR with T-Trees, which relies on 5 simulations only because of a much higher computational burden of T-Trees as compared to other methods. 
+Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only (18,941 SNPs). Reducing the number of SNPs increases the polygenicity (i.e. the proportion of causal SNPs) of the simulated models. Reducing the number of SNPs ($p$) is also equivalent to increasing the sample size ($n$) as predictive power is dependent on $n/p$ \cite[]{dudbridge2013power,vilhjalmsson2015modeling}. For this scenario, we use the additive model only, but continue to vary all other simulation parameters. 
+Finally, scenario \textnumero3 uses the whole dataset as in scenario \textnumero1 while varying the size of the training set in order to assess how the sample size affects predictive performance of methods. A total of 100 simulations per combination of parameters are run using 300 causal SNPs randomly chosen on the genome.
 
 
 \subsection{Predictive performance measures}\label{sec:auc}
@@ -140,35 +141,33 @@ For this scenario, we use the additive (``simple'') model only, but continue to 
 In this study, we use two different measures of predictive accuracy. First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction,lusted1971signal}. In the case of our study, the AUC is the probability that the PRS of a case is greater than the PRS of a control.
 This measure indicates the extent to which we can distinguish between cases and controls using PRS. 
 As a second measure, we also report the partial AUC for specificities between 90\% and 100\% \cite[]{dodd2003partial,mcclish1989analyzing}. This measure is similar to the AUC, but focuses on high specificities, which is the most useful part of the ROC curve in clinical settings. 
-When reporting AUC results of simulations, we use estimates of maximum achievable AUC of 84\% and 94\% for heritabilities of respectively 50\% and 80\%. These estimates are based on three different yet consistent estimations (see Supplementary Materials). %Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
+When reporting AUC results of simulations, we also report maximum achievable AUC values of 84\% and 94\% for heritabilities of respectively 50\% and 80\%. These estimates are based on three different yet consistent estimations (see Supplementary Materials). %Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
 
 \subsection{Methods compared} \label{sec:methods}
 
-In this study, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression.
+In this study, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression (PLR).
 
-The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWAS). In GWAS, a coefficient of regression (i.e.\ the estimated effect size $\hat\beta_j$) is learned independently for each SNP $j$ along with a corresponding p-value $p_j$. The SNPs are first clumped (C) so that there remain only loci that are weakly correlated with one another (this set of SNPs is denoted $S_\text{clumping}$). Then, thresholding (T) consists in removing SNPs with p-values larger than a threshold $p_T$ to be determined. Finally, a PRS is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients $$\rm{PRS}_i = \sum_{\substack{j \in S_\text{clumping} \\ p_j~<~p_T}} \hat\beta_j \cdot G_{i,j}~,$$ where $\hat\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS. In this study, we mostly report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb, but we also investigate thresholds of $0.05$ and $0.8$. We report three different scores of prediction: one including all the SNPs remaining after clumping (denoted ``PRS-all''), one including only SNPs remaining after clumping and that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$, ``PRS-stringent''), and one that maximizes the AUC (``PRS-max'') for these two thresholds ($0$ and $5 \cdot 10^{-8}$) and a sequence of 100 values of thresholds ranging from $10^{-0.1}$ to $10^{-100}$ and equally spaced on the log-log-scale (Table \ref{tab:thr}).
-As we report the optimal threshold based on the test set, the AUC for ``PRS-max'' is an upper bound of the AUC for the C+T method.
+The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWAS). In GWAS, a coefficient of regression (i.e.\ the estimated effect size $\hat\beta_j$) is learned independently for each SNP $j$ along with a corresponding p-value $p_j$. The SNPs are first clumped (C) so that there remain only loci that are weakly correlated with one another (this set of SNPs is denoted $S_\text{clumping}$). Then, thresholding (T) consists in removing SNPs with p-values larger than a user-defined threshold $p_T$. Finally, the PRS for individual $i$ is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients $$\rm{PRS}_i = \sum_{\substack{j \in S_\text{clumping} \\ p_j~<~p_T}} \hat\beta_j \cdot G_{i,j}~,$$ where $\hat\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS. In this study, we mostly report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb, but we also investigate thresholds of $0.05$ and $0.8$. We report three different scores of prediction: one including all the SNPs remaining after clumping (denoted ``C+T-all''), one including only SNPs remaining after clumping and that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$, ``C+T-stringent''), and one that maximizes the AUC (``C+T-max'') for 102 thresholds between $1$ and $10^{-100}$ (Table \ref{tab:thr}).
+As we report the optimal threshold based on the test set, the AUC for ``C+T-max'' is an upper bound of the AUC for the C+T method.
 
-T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests \cite[]{breiman2001random} that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data \cite[]{botta2014exploiting}. We use the same parameters as reported in Table 4 of \cite{botta2014exploiting}, except that we use 100 trees instead of 1000 because using 1000 trees provides a minimal increase of AUC while requiring a disproportionately long processing time (e.g.\ AUC of 81.5\% instead of 81\%, data not shown). %We call this method ``T-Trees'' in the results.
+T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests \cite[]{breiman2001random} that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data \cite[]{botta2014exploiting}. We use the same parameters as reported in Table 4 of \cite{botta2014exploiting}, except that we use 100 trees instead of 1000. Using 1000 trees provides a minimal increase of AUC while requiring a disproportionately long processing time (e.g.\ AUC of 81.5\% instead of 81\%, data not shown). %We call this method ``T-Trees'' in the results.
 
-Finally, for the penalized logistic regression, we find regression coefficients $\beta_0$ and $\beta$ that minimize the following regularized loss function $$L(\lambda, \alpha) = \underbrace{ -\sum_{i=1}^n \left( y_i \log\left(p_i\right) + (1 - y_i) \log\left(1 - p_i\right) \right) }_\text{Loss function}   +   \underbrace{ \lambda \left((1-\alpha)\frac{1}{2}\|\beta\|_2^2 + \alpha \|\beta\|_1\right) }_\text{Penalization} ~,$$ where $p_i=1/\left(1+\exp\left(-(\beta_0 + x_i^T\beta)\right)\right)$, $x$ is denoting the genotypes and covariables (e.g.\ principal components), $y$ is the disease status to predict, $\lambda$ and $\alpha$ are two regularization hyper-parameters that need to be chosen.
+Finally, for the penalized logistic regression (PLR), we find regression coefficients $\beta_0$ and $\beta$ that minimize the following regularized loss function $$L(\lambda, \alpha) = \underbrace{ -\sum_{i=1}^n \left( y_i \log\left(p_i\right) + (1 - y_i) \log\left(1 - p_i\right) \right) }_\text{Loss function}   +   \underbrace{ \lambda \left((1-\alpha)\frac{1}{2}\|\beta\|_2^2 + \alpha \|\beta\|_1\right) }_\text{Penalization} ~,$$ where $p_i=1/\left(1+\exp\left(-(\beta_0 + x_i^T\beta)\right)\right)$, $x$ is denoting the genotypes and covariables (e.g.\ principal components), $y$ is the disease status to predict, $\lambda$ and $\alpha$ are two regularization hyper-parameters that need to be chosen.
 Different regularizations can be used to prevent overfitting, among other benefits: the L2-regularization (``ridge'', \cite{hoerl1970ridge}) shrinks coefficients and is ideal if there are many predictors drawn from a Gaussian distribution (corresponds to $\alpha = 0$ in the previous equation);
 the L1-regularization (``lasso'', \cite{tibshirani1996regression}) forces some of the coefficients to be equal to zero and can be used as a means of variable selection, leading to sparse models (corresponds to $\alpha = 1$);
-the L1- and L2-regularization (``elastic-net'', \cite{zou2005regularization}) is a compromise between the two previous penalties and is particularly useful in the $m \gg n$ situation ($m$: number of SNPs), or any situation involving many correlated predictors (corresponds to $0 < \alpha < 1$) \cite[]{friedman2010regularization}. In this study, we use an embedded grid search over $\alpha \in \{1, 0.5, 0.05, 0.001\}$.
+the L1- and L2-regularization (``elastic-net'', \cite{zou2005regularization}) is a compromise between the two previous penalties and is particularly useful in the $p \gg n$ situation ($p$: number of SNPs), or any situation involving many correlated predictors (corresponds to $0 < \alpha < 1$) \cite[]{friedman2010regularization}. In this study, we use an embedded grid search over $\alpha \in \{1, 0.5, 0.05, 0.001\}$.
 
-To fit this penalized logistic regression, we use a very efficient algorithm \cite[]{friedman2010regularization,tibshirani2012strong,zeng2017efficient} from which we derived our own implementation in R package bigstatsr.
+To fit this penalized logistic regression, we use an efficient algorithm \cite[]{friedman2010regularization,tibshirani2012strong,zeng2017efficient} from which we derived our own implementation in R package bigstatsr.
 This type of algorithm builds predictions for many values of $\lambda$, which is called a ``regularization path''. To obtain an algorithm free of the choice of this hyper-parameter $\lambda$, we developed a procedure that we call Cross-Model Selection and Averaging (CMSA, figure \ref{fig:CMSA}).
-Because of L1-regularization, the resulting vectors of coefficients are sparse and can be used to make a PRS based on a \textit{linear} combination of allele counts. We refer to this method as ``logit-simple'' in the results section.
+Because of L1-regularization, the resulting vectors of coefficients are sparse and can be used to make a PRS based on a \emph{linear} combination of allele counts. We refer to this method as ``PLR'' in the results section.
 
-In order to capture recessive and dominant effects in addition to linear effects, we use feature engineering: we construct a separate dataset with, for each SNP variable, two more variables coding for recessive and dominant effects: one variable is coded 1 if homozygous variant and 0 otherwise, and the other is coded 0 for homozygous referent and 1 otherwise. This results in a dataset with 3 times as many variables as the initial one, on which we can apply penalized logistic regression. We refer to this method ``logit-triple'' in the results.
+To capture recessive and dominant effects on top of additive effects in PLR, we use simple feature engineering: we construct a separate dataset with 3 times as many variables as the initial one. 
+For each SNP variable, we add two more variables coding for recessive and dominant effects: one variable is coded 1 if homozygous variant and 0 otherwise, and the other is coded 0 for homozygous referent and 1 otherwise.
+We refer to this method as ``PLR3'' in the results.
 
 \subsection{Evaluating predictive performance for Celiac data}
 
-We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of predictors and execution time for the original Celiac dataset with real phenotypes: we randomly split 100 times the dataset in a training set of 12,000 indiduals and a test set composed of the remaining 3155 individuals.
-
-\subsection{Reproduciblity}
-
-All the code used in this paper along with results such as figures and tables, are available as HTML R notebooks in the Supplementary Materials.
+We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of predictors and execution time for the original Celiac dataset with the observed case-control status: we randomly split 100 times the dataset in a training set of 12,000 indiduals and a test set composed of the remaining 3155 individuals.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -176,49 +175,48 @@ All the code used in this paper along with results such as figures and tables, a
 
 \subsection{Joint estimation improves predictive performance}
 
-We compared penalized logistic regression (``logit-simple'') with the C+T method (``PRS'') using whole-genome simulations of scenario \textnumero1 (Table \ref{tab:simus}).
+We compared penalized logistic regression (PLR) with the C+T method using whole-genome simulations of scenario \textnumero1 (Table \ref{tab:simus}).
 
-When simulating a model with 30 causal SNPs and an heritability of 80\%, penalized logistic regression provides AUC greater than 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T method range between 83\% and 90\% (Figures \ref{fig:main-AUC-logit} and \ref{fig:main-AUC-PRS}). 
-Moreover, penalized logistic regression consistently provides higher predictive performance than the C+T method across all scenarios we considered, excepted in some cases of high polygenicity or small sample size where all methods perform poorly (AUC values below 60\% -- figures \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-logit}).
+When simulating a model with 30 causal SNPs and an heritability of 80\%, PLR provides AUC of 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T range between 83\% and 90\% (Figures \ref{fig:main-AUC-logit} and \ref{fig:main-AUC-PRS}). 
+Moreover, PLR consistently provides higher predictive performance than C+T across all scenarios we considered, excepted in some cases of high polygenicity or small sample size where all methods perform poorly (AUC values below 60\% -- figures \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-logit}).
 
-Method ``logit-simple'' provides particularly higher predictive performance than ``PRS-max'' when there are correlations between predictors, i.e.\ when we choose causal SNPs to be in the HLA region. In this situation, the mean AUC reaches 92.5\% with the ``logit-simple'' approach and 84\% with ``PRS-max'', while the maximum achievable AUC is 94\% (Figure \ref{fig:main-AUC-logit}).
+PLR provides particularly higher predictive performance than C+T when there are correlations between predictors, i.e.\ when we choose causal SNPs to be in the HLA region. In this situation, the mean AUC reaches 92.5\% for PLR and 84\% for ``C+T-max'' (Figure \ref{fig:main-AUC-logit}).
 
-Note that for the simulations we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
+Note that, for the simulations, we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
 
 \subsection{Importance of hyper-parameters}
 
-In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can dramatically impact the predictive performance of C+T. For example, in a model with only 30 causal SNPs, AUC ranges from less than 60\% when using all SNPs passing clumping to 90\% if choosing the optimal p-value threshold (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
+In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can dramatically impact the predictive performance of C+T. For example, in a model with only 30 causal SNPs, AUC ranges from less than 60\% when using all SNPs passing clumping to 90\% \emph{if} choosing the optimal p-value threshold (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
 
-Concerning the $r^2$ threshold of the clumping step in C+T, we mostly used the common value of $0.2$. Yet, using a more stringent value of $0.05$ provides higher predictive performance than using $0.2$ in most of the cases tested in this paper (Figures \ref{fig:supp-AUC-all-r2}, \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-chr6-all-r2})
+Concerning the $r^2$ threshold of the clumping step in C+T, we mostly used the common value of $0.2$. Yet, using a more stringent value of $0.05$ provides higher predictive performance than using $0.2$ in most of the cases we considered (Figures \ref{fig:supp-AUC-all-r2}, \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-chr6-all-r2})
 
-Method ``logit-simple'' that automatically chooses hyper-parameter $\lambda$ provides similar predictive performance than the best predictive performance of the implementation of R package biglasso \cite[]{zeng2017efficient}, only slightly better for biglasso, which is likely due to over-fitting when reporting the best prediction (Figure \ref{fig:supp-biglasso}).
+Our implementation of PLR that automatically chooses hyper-parameter $\lambda$ provides similar predictive performance than the best predictive performance of 100 models corresponding to different values of $\lambda$ (Figure \ref{fig:supp-biglasso}).
 
 
 \subsection{Non-linear effects}
 
 We tested the T-Trees method in scenario \textnumero1.
-As compared to ``logit-simple'', T-Trees perform worse in terms of predictive ability, while taking much longer to run and making more complex predictive models because T-Trees use more predictors and non-linear effects (Figure \ref{fig:supp-ttrees}). 
-Even when simulating a ``fancy'' model in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower when using T-Trees than when using ``logit-simple'' (Figure \ref{fig:supp-ttrees}).
+As compared to PLR, T-Trees perform worse in terms of predictive ability, while taking much longer to run and making more complex predictive models because T-Trees use more predictors and non-linear effects (Figure \ref{fig:supp-ttrees}). 
+Even when simulating with model ``COMP'' in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower when using T-Trees than when using PLR (Figure \ref{fig:supp-ttrees}).
 
-We also compared the two penalized logistic regressions in scenario \textnumero1, ``logit-simple'' and ``logit-triple'' that uses additional features (variables) coding for recessive and dominant effects.
-Predictive performance of ``logit-triple'' are nearly as good as ``logit-simple'' when there are only linear effects (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For the ``fancy model'', ``logit-triple'' provides AUC values at least 3.5\% higher than ``logit-simple'', excepted when there are 3000 causal SNPs.
-Yet, the ``triple'' solution takes 2-3 times as much time to run and requires 3 times as much disk storage as the ``simple'' solution.
+We also compared the two penalized logistic regressions in scenario \textnumero1, PLR and PLR3 that uses additional features (variables) coding for recessive and dominant effects.
+Predictive performance of PLR3 are nearly as good as PLR when there are only addtive effects (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For model ``COMP'', PLR3 provides AUC values at least 3.5\% higher than PLR, excepted when there are 3000 causal SNPs.
+Yet, PLR3 takes 2-3 times as much time to run and requires 3 times as much disk storage as PLR.
 
 \subsection{Simulations varying number of SNPs and training size} %%%%
 
-First, when reproducing simulations of scenario \textnumero1 using chromosome 6 only (scenario \textnumero2), the predictive performance of ``logit-simple'' always increase (Figure \ref{fig:supp-AUC-chr6-all-r2}). 
-There is particularly a large increase when simulating 3000 causal SNPs: AUC from the ``logit-simple'' increases from 60\% to nearly 80\% for Gaussian effects and a heritability of 80\%.
-On the contrary, when simulating only 30 or 300 causal SNPs on the corresponding dataset, AUC of the ``PRS-max'' does not increase, and even decreases for an heritability of 80\% (Figure \ref{fig:supp-AUC-chr6-all-r2}). 
-Secondly, when varying the training size (scenario \textnumero3), we report an increase of AUC when increasing the training size, with a faster increase of AUC provided by ``logit-simple'' as compared to ``PRS-max'' (Figure  \ref{fig:main-AUC-ntrain}).
+First, when reproducing simulations of scenario \textnumero1 using chromosome 6 only (scenario \textnumero2), the predictive performance of PLR always increase (Figure \ref{fig:supp-AUC-chr6-all-r2}). 
+There is particularly a large increase when simulating 3000 causal SNPs: AUC from PLR increases from 60\% to nearly 80\% for Gaussian effects and a disease heritability of 80\%.
+On the contrary, when simulating only 30 or 300 causal SNPs with the corresponding dataset, AUC of ``C+T-max'' does not increase, and even decreases for an heritability of 80\% (Figure \ref{fig:supp-AUC-chr6-all-r2}). 
+Secondly, when varying the training size (scenario \textnumero3), we report an increase of AUC with a larger training size, with a faster increase of AUC provided with PLR as compared to ``C+T-max'' (Figure  \ref{fig:main-AUC-ntrain}).
 
 
 \subsection{Polygenic scores for the celiac disease}
 
-Joint logistic regressions also provide higher AUC values for the Celiac data: 88.7\% with ``logit-simple'' and 89.1\% with ``logit-triple'' as compared to 82.5\% with the C+T method.
-The relative increase in partial AUC, for specificities larger than 90\%, is even larger (42\% and 47\%) with partial AUC values of 0.0411, 0.0426 and 0.0289 obtained with ``logit-simple'', ``logit-triple'' and the C+T method, respectively.
-Moreover, logistic regressions use less predictors, respectively 1570, 2260 and 8360 (Table \ref{tab:results-celiac}, figures \ref{fig:celiac-roc} and supplementary notebook ``results-celiac'').
-Note that for the C+T method, we still report the best result among 102 p-value thresholds.
-In terms of computation time, we report only the GWAS computation for the C+T method and we show that the ``logit-simple'' method, while learning jointly on all SNPs at once and testing different hyper-parameter values, is almost as fast as the C+T method (190 vs 130 seconds), and the ``logit-triple'' takes less than twice as long as the ``logit-simple'' (296 vs 190 seconds).
+Joint logistic regressions also provide higher AUC values for the Celiac data: 88.7\% with PLR and 89.1\% with PLR3 as compared to 82.5\% with ``C+T-max''.
+The relative increase in partial AUC, for specificities larger than 90\%, is even larger (42\% and 47\%) with partial AUC values of 0.0411, 0.0426 and 0.0289 obtained with PLR, PLR3 and ``C+T-max'', respectively.
+Moreover, logistic regressions use less predictors, respectively 1570, 2260 and 8360 (Table \ref{tab:results-celiac}, figure \ref{fig:celiac-roc} and supplementary notebook ``results-celiac'').
+In terms of computation time, we show that PLR, while learning jointly on all SNPs at once and testing four different hyper-parameter values, is almost as fast as the C+T method (190 vs 130 seconds), and PLR3 takes less than twice as long as PLR (296 vs 190 seconds).
 
 \begin{table}[h]
 \caption{Results for the real Celiac dataset. The results are averaged over 100 runs where the training step is randomly composed of 12,000 individuals. In the parentheses is reported the standard deviation of $10^5$ bootstrap samples of the mean of the corresponding variable. Results are reported with 3 significant digits.\label{tab:results-celiac}}
@@ -228,9 +226,9 @@ In terms of computation time, we report only the GWAS computation for the C+T me
   \hline
 Method & AUC & pAUC & \# predictors & Execution time (s) \\
   \hline
-PRS-max & 0.825 (0.000664) & 0.0289 (0.000187) & 8360 (744) & 130 (0.143) \\ 
-logit-simple & 0.887 (0.00061) & 0.0411 (0.000224) & 1570 (46.4) & 190 (1.21) \\ 
-logit-triple & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \\ 
+C+T-max & 0.825 (0.000664) & 0.0289 (0.000187) & 8360 (744) & 130 (0.143) \\ 
+PLR & 0.887 (0.00061) & 0.0411 (0.000224) & 1570 (46.4) & 190 (1.21) \\ 
+PLR3 & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \\ 
    \hline
 \end{tabular}
 \end{table}
@@ -242,27 +240,30 @@ logit-triple & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \
 
 \subsection{Joint estimation improves predictive performance}
 
-In this comparative study, we present a computationally efficient implementation of penalized logistic regression. 
-This model can be used to build polygenic risk scores based on very large SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. 
+In this comparative study, we present a computationally efficient implementation of penalized logistic regression (PLR). 
+This model can be used to build polygenic risk scores based on very large individual-level SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. 
 In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to substantially improve predictive performance as compared to the standard C+T approach in which SNP effects are learned independently. 
-Penalized logistic regression nearly always outperform the C+T method, and the benefits of using it are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
+PLR nearly always outperform the C+T method, and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
 
 \subsection{Importance of hyper-parameters}
 
 The choice of hyper-parameter values is very important since it can greatly impact method performance. In the C+T method, there are two main hyper-parameters: the $r^2$ and the $p_T$ thresholds that control how stringent are the clumping and thresholding steps, respectively. 
-The choice of the $r^2$ threshold of the clumping step is important. Indeed, on the one hand, choosing a low value for this threshold may discard independently predictive SNPs that are in Linkage Desiquilibrium; yet, on the other hand, when choosing a high value for this threshold, too much redundant information would be included in the model, which would bias SNP effects.
-Based on the simulations, we find that using a stringent threshold ($r^2 = 0.05$) leads to higher predictive performance, even when causal SNPs are correlated. It means that accurately estimating SNP effects is more important than including all causal SNPs.
-Moreover, in this paper, we reported the maximum AUC of 102 different p-value thresholds, a threshold that should normally be learned on the training set only. The choice of this threshold is very important as it can greatly impact the predictive performance of the C+T method, which we confirm in this study \cite[]{ware2017heterogeneity}.
+The choice of the $r^2$ threshold of the clumping step is important. 
+Indeed, on the one hand, choosing a low value for this threshold may discard informative SNPs that are correlated.
+Yet, on the other hand, when choosing a high value for this threshold, too much redundant information would be included in the model, which would add some noise to the PRS.
+Based on the simulations, we find that using a stringent threshold ($r^2 = 0.05$) leads to higher predictive performance, even when causal SNPs are correlated. It means that, in most cases, avoiding redundant information is more important than including all causal SNPs.
+The choice of the $p_T$ threshold is also very important as it can greatly impact the predictive performance of the C+T method, which we confirm in this study \cite[]{ware2017heterogeneity}. 
+In this paper, we reported the maximum AUC of 102 different p-value thresholds, a threshold that should normally be learned on the training set only. To our knowledge, there is no clear standard on how to choose these two critical hyper-parameters.
 
-On the contrary, in the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results (as compared to the best prediction when using R package biglasso), but it also accelerates the training of the model thanks to the development of an early stopping criterion. 
+On the contrary, in the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the model training thanks to the development of an early stopping criterion. 
 Usually, cross-validation is used to choose hyper-parameter values and then the model is trained again with these particular hyper-parameter values \cite[]{Hastie2008,wei2013large}. Yet, performing cross-validation and retraining the model is computationally demanding; CMSA offers a less burdensome alternative. 
 Concerning hyper-parameter $\alpha$ that accounts for the relative importance of the L1 and L2 regularizations, we use a grid  search directly embedded in the CMSA procedure. 
-%Our penalized logistic regression implementation does not allow for setting $\alpha = 0$, a model that would assume the infinitesimal model. Yet, if using e.g. $\alpha = 0.001$, it would lead to a similar model.
+%Our penalized logistic regression implementation does not allow for setting $\alpha = 0$, a model that would assume the infinitesimal model. Yet, if using e.g.\ $\alpha = 0.001$, it would lead to a similar model.
 
 \subsection{Non-linear effects}
 
-In this paper, we also explored how to capture non-linear effects. For this, we introduced a simple feature engineering technique that enables logistic regression to detect and learn not only additive effects, but also dominant and recessive effects. 
-This technique improves the predictive performance of logistic regression when there are some non-linear effects in the simulations, while providing nearly the same predictive performance when there are only linear effects. Moreover, it also improves predictive performance for the celiac disease. 
+We also explored how to capture non-linear effects. For this, we introduced a simple feature engineering technique that enables PLR to detect and learn not only additive effects, but also dominant and recessive effects. 
+This technique improves the predictive performance of PLR when there are some non-linear effects in the simulations, while providing nearly the same predictive performance when there are only additive effects. Moreover, it also improves predictive performance for the celiac disease. 
 
 Yet, this approach is not able to detect interaction-type effects. 
 In order to capture interaction-type effects, we tested T-Trees, a method that is able to exploit SNP correlations thanks to special decision trees \cite[]{botta2014exploiting}. 
@@ -270,11 +271,18 @@ However, predictive performance of T-Trees were consistently lower than with pen
 
 \subsection{Limitations}
 
-Our approach has one major limitation: the main advantage of the C+T method is that it is applicable directly to summary statistics, allowing to leverage the largest GWAS sample size to date, even when individual cohort data cannot be merged because of practical and ethical reasons (e.g. consortium data including many cohorts). As of today, the proposed penalized logistic regression does not allow for the analysis of summary data, but this represents an important future direction of our work. The current version is of particular interest for the analysis of modern SNP dataset including hundreds of thousands of individuals. 
+Our approach has one major limitation: the main advantage of the C+T method is its direct applicability to summary statistics, allowing to leverage the largest GWAS results to date, even when individual cohort data cannot be merged because of practical or ethical reasons (e.g.\ consortium data including many cohorts). As of today, the proposed penalized logistic regression does not allow for the analysis of summary data, but this represents an important future direction of our work. The current version is of particular interest for the analysis of modern SNP datasets including hundreds of thousands of individuals. 
 
-Finally, in this comparative study, we did not consider the problem of population structure \cite[]{marquez2017multiethnic,martin2017human,vilhjalmsson2015modeling} and also did not consider non-genetic data such as environmental and clinical data \cite[]{dey2013integration,van2012integration}. In next study, we will assess how can we use models and effects learned in one population to improve learning and prediction in another population. 
+Finally, in this comparative study, we did not consider the problem of population structure \cite[]{marquez2017multiethnic,martin2017human,vilhjalmsson2015modeling} and also did not consider non-genetic data such as environmental and clinical data \cite[]{dey2013integration,van2012integration}. 
+%In future work, we aim at exploring how we can overcome those issues.
 %We will use a dataset as large as the UK biobank \cite[]{bycroft2017genome}. Finally, we also wish to assess how can we combine the information provided by genetic data with clinical and environmental data, possibly in a non-linear way.
 
+\subsection{Conclusion}
+
+In this comparative study, we have presented a computationally efficient implementation of penalized logistic regression that can be used to predict disease status based on genotypes. Note that a similar penalized linear regression is also available in our software. 
+Usually, joint statistical learning methods are so computationally demanding that they cannot be used on large-scale datasets such as the UK biobank \cite[]{bycroft2017genome}. 
+A partial solution to this problem is to pre-filter data, but it usually leads to a decrease in predictive performance as some information is removed \cite[]{accuheight2018}. This pre-filtering step is not necessary anymore thanks to our implementation.
+Moreover, the model we present in this paper can flexibly adapt to traits with different architectures thanks to two hyper-parameters that are automatically learned with the model. Thus, we strongly believe that our implementation of penalized regressions would be appropriate for predicting autoimmune diseases with a few strong effects (e.g.\ celiac disease) as well as highly polygenic traits (e.g.\ standing height). These models could also be used to predict phenotypes based on other omics data since the implementation is not specific to genotype data.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -291,13 +299,13 @@ Numero of & \multirow{2}{*}{Dataset} & Size of & Causal SNPs & Distribution & \m
 scenario & & training set & (number and location) & of effects & & model & \\
 \hline
 \hline
-\multirow{4}{*}{1} & \multirow{4}{*}{All 22 chromosomes} & \multirow{4}{*}{6000} & 30 in HLA & \multirow{2.5}{*}{Gaussian} & \multirow{2.5}{*}{0.5} & \multirow{2.5}{*}{simple} & PRS \\
-& & & 30 in all & & & & logit-simple \\
-& & & 300 in all & \multirow{1.5}{*}{Laplace} & \multirow{1.5}{*}{0.8} & \multirow{1.5}{*}{fancy} & logit-triple \\
+\multirow{4}{*}{1} & \multirow{4}{*}{All 22 chromosomes} & \multirow{4}{*}{6000} & 30 in HLA & \multirow{2.5}{*}{Gaussian} & \multirow{2.5}{*}{0.5} & \multirow{2.5}{*}{ADD} & PRS \\
+& & & 30 in all & & & & PLR \\
+& & & 300 in all & \multirow{1.5}{*}{Laplace} & \multirow{1.5}{*}{0.8} & \multirow{1.5}{*}{COMP} & PLR3 \\
 & & & 3000 in all & & & & (T-Trees) \\
 \hline
-\multirow{2}{*}{2} & \multirow{2}{*}{Chromosome 6 only} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{simple} & PRS \\ 
-& & & & & & & logit-simple\\
+\multirow{2}{*}{2} & \multirow{2}{*}{Chromosome 6 only} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{-} & \multirow{2}{*}{ADD} & PRS \\ 
+& & & & & & & PLR\\
 \hline
 \multirow{5}{*}{3} & \multirow{5}{*}{All 22 chromosomes} & 1000 & \multirow{5}{*}{300 in all} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{-} & \multirow{5}{*}{-} \\ 
 & & 2000 & & & & & \\
@@ -312,28 +320,28 @@ scenario & & training set & (number and location) & of effects & & model & \\
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-logit}}
-\caption{Main comparison of the C+T and ``logit-simple'' methods in scenario \textnumero1 for the ``simple'' model and an heritability of 80\%. Mean of AUC over 100 simulations for ``logit-simple'' and the maximum AUC reported with the C+T method (``PRS-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Main comparison of C+T and PLR in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean of AUC over 100 simulations for PLR and the maximum AUC reported with ``C+T-max''. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-PRS}}
-\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for the ``simple'' model and an heritability of 80\%. Mean of AUC over 100 simulations. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean of AUC over 100 simulations. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-PRS}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-ntrain}}
-\caption{Comparison of models when varying sample size in scenario \textnumero3 for the ``simple'' model with 300 causal SNPs sampled anywhere on the genome. Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and ``logit-simple'' as a function of the training size. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of models when varying sample size in scenario \textnumero3 for model ``ADD'' with 300 causal SNPs sampled anywhere on the genome. Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and PLR as a function of the training size. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-ntrain}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{celiac-roc}}
-\caption{ROC Curves for the ``C+T'', ``logit-simple'' and ``logit-triple'' methods for Celiac disease dataset. Models were trained using 12,000 individuals. These are results projecting these models on the remaining 3155 individuals. The figure is plotted using R package plotROC \cite[]{sachs2017plotroc}.\label{fig:celiac-roc}}
+\caption{ROC Curves for C+T, PLR and PLR3 for the celiac disease dataset. Models were trained using 12,000 individuals. These are results projecting these models on the remaining 3155 individuals. The figure is plotted using R package plotROC \cite[]{sachs2017plotroc}.\label{fig:celiac-roc}}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -343,6 +351,11 @@ scenario & & training set & (number and location) & of effects & & model & \\
 
 Authors acknowledge LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01). Authors also acknowledge the Grenoble Alpes Data Institute that is supported by the French National Research Agency under the ``Investissements d'avenir'' program (ANR-15-IDEX-02).
 We are also grateful to F\'elix Balazard for useful discussions about T-Trees, and to Yaohui Zeng for useful discussions about R package biglasso.
+
+\section*{Reproducibility}
+
+All the code used in this paper along with results such as figures and tables, are available as HTML R notebooks in the Supplementary Materials.
+Results are available at [TODO]. A tutorial on how to start with R packages bigstatsr and bigsnpr is available at \url{https://privefl.github.io/bigsnpr/articles/demo.html}.
 
 \vspace*{-12pt}
 
@@ -365,7 +378,7 @@ We are also grateful to F\'elix Balazard for useful discussions about T-Trees, a
 
 \subsection*{``Fancy'' model}
 
-For the ``fancy'' model, we separate the causal SNPs in three equal sets $S_\text{causal}^{(1)}$, $S_\text{causal}^{(2)}$
+For model ``COMP'', we separate the causal SNPs in three equal sets $S_\text{causal}^{(1)}$, $S_\text{causal}^{(2)}$
 and $S_\text{causal}^{(3)}$; $S_\text{causal}^{(3)}$ is further separated in two equal sets, $S_\text{causal}^{(3.1)}$ and $S_\text{causal}^{(3.2)}$.
 We then compute $$y_i = \underbrace{\sum_{j\in S_\text{causal}^{(1)}} w_j \cdot \widetilde{G_{i,j}}}_\text{linear} + \underbrace{\sum_{j\in S_\text{causal}^{(2)}} w_j \cdot \widetilde{D_{i,j}}}_\text{dominant} + \underbrace{\sum_{\substack{k=1 \\ j_1=e_k^{(3.1)} \\ j_2=e_k^{(3.2)}}}^{k=\left|S_\text{causal}^{(3.1)}\right|} w_{j_1} \cdot \widetilde{G_{i,j_1} G_{i,j_2}}}_\text{interaction} ~~+~~ \epsilon_i~,$$
 where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $S_\text{causal}^{(q)}=\left\{e_k^{(q)},~k \in \left\{1, \ldots, \left|S_\text{causal}^{(q)}\right|\right\}\right\}$.
@@ -375,7 +388,7 @@ where $D_{i,j} = \mathds{1}\left\{G_{i,j} \neq 0\right\}$ and $S_\text{causal}^{
 
 We used three different ways to estimate the maximum achievable AUC for our simulations.
 First, we used the estimation from equation (3) of \cite{wray2010genetic}. For a prevalence fixed at 30\% and an heritability of 50\% (respectively 80\%), the approximated theoretical values of AUC are 84.1\% (respectively 93.0\%). Note that this approximation is reported to be less accurate for high heritabilities.
-Secondly, if we assume that the genetic part of the liabilities follows a Gaussian distribution $N(0, h^2)$ and that the environmental part follows a Gaussian distribution $N(0, 1 - h^2)$, we can estimate the theoretical value of the AUC that can be achieved given the heritability $h^2$ through Monte Carlo simulations. We report AUCs of 84.1\% and 94.1\% for an heritability of 50\% and 80\%, respectively.
+Secondly, if we assume that the genetic part of the liabilities follows a Gaussian distribution $N(0, h^2)$ and that the environmental part follows a Gaussian distribution $N(0, 1 - h^2)$, we can estimate the theoretical value of the AUC that can be achieved given the disease heritability $h^2$ through Monte Carlo simulations. We report AUCs of 84.1\% and 94.1\% for an heritability of 50\% and 80\%, respectively.
 Thirdly, we reproduce the exact same procedure of simulations and, for each combination of parameters (Table \ref{tab:simus}), we estimate the AUC of the ``oracle'', i.e.\ the true simulated genetic part of the liabilities through 100 replicates. For every combination of parameters, AUC of oracles are comprised between 83.2\% and 84.2\% for an heritability of 50\% and between 93.2\% and 94.1\% for an heritability of 80\%.
 Given all these estimates of the maximal achievable AUC and for the sake of simplicity, we report maximum AUCs of 84\% (94\%) for heritabilities of 50\% (80\%) whatever are the parameters of the simulations.
 
@@ -435,7 +448,7 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-corr}}
-\caption{Correlation between AUC and partial AUC values in scenario \textnumero1. There is a Spearman correlation of 98\% between values of AUC and partial AUC. The relation between the two values are the same whatever are the heritability, distribution of effects and method used.\label{fig:supp-AUC-corr}}
+\caption{Correlation between AUC and partial AUC values in scenario \textnumero1. There is a Spearman correlation of 98\% between values of AUC and partial AUC. The relation between the two values are the same whatever are the disease heritability, distribution of effects and method used.\label{fig:supp-AUC-corr}}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -443,28 +456,28 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-logit}}
-\caption{Comparison of the C+T and ``logit-simple'' methods in scenario \textnumero1 for the ``simple'' model and an heritability of 50\%. Mean of AUC over 100 simulations for ``logit-simple'' and the maximum AUC reported with the C+T method (``PRS-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of C+T and PLR in scenario \textnumero1 for model ``ADD'' and an heritability of 50\%. Mean of AUC over 100 simulations for PLR and the maximum AUC reported with the C+T method (``C+T-max''). Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:supp-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-PRS}}
-\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for the ``simple'' model and an heritability of 50\%. Mean of AUC over 100 simulations. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for model ``ADD'' and an heritability of 50\%. Mean of AUC over 100 simulations. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:supp-AUC-PRS}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-all-r2}}
-\caption{Comparison of models in scenario \textnumero1 for the ``simple'' model. Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and ``logit-simple'' as a function of the number and location of causal SNPs. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of models in scenario \textnumero1 for model ``ADD''. Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and PLR as a function of the number and location of causal SNPs. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:supp-AUC-all-r2}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-chr6-all-r2}}
-\caption{Comparison of models in scenario \textnumero2 (using chromosome 6 only) for the ``simple'' model. Thinner lines represents results in scenario \textnumero1 (Figure \ref{fig:supp-AUC-all-r2}). Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and ``logit-simple'' as a function of the number and location of causal SNPs. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of models in scenario \textnumero2 (using chromosome 6 only) for model ``ADD''. Thinner lines represents results in scenario \textnumero1 (Figure \ref{fig:supp-AUC-all-r2}). Mean of AUC over 100 simulations for the maximum values of PRS for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and PLR as a function of the number and location of causal SNPs. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:supp-AUC-chr6-all-r2}
 \end{figure}
 
@@ -473,7 +486,7 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-ttrees}}
-\caption{Comparison of T-Trees and ``logit-simple'' in scenario \textnumero1 for an heritability of 80\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 5 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 5 simulations. \textbf{C:} Boxplots of execution times for 5 simulations.}
+\caption{Comparison of T-Trees and PLR in scenario \textnumero1 for an heritability of 80\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 5 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 5 simulations. \textbf{C:} Boxplots of execution times for 5 simulations.}
 \label{fig:supp-ttrees}
 \end{figure}
 
@@ -482,7 +495,7 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-triple}}
-\caption{Comparison of ``logit-triple'' and ``logit-simple'' in scenario \textnumero1 for an heritability of 80\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 100 simulations. \textbf{C:} Boxplots of execution times for 100 simulations.}
+\caption{Comparison of PLR3 and PLR in scenario \textnumero1 for an heritability of 80\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 100 simulations. \textbf{C:} Boxplots of execution times for 100 simulations.}
 \label{fig:supp-triple}
 \end{figure}
 
@@ -490,7 +503,7 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-AUC-triple}}
-\caption{Comparison of ``logit-triple'' and ``logit-simple'' in scenario \textnumero1 for an heritability of 50\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of PLR3 and PLR in scenario \textnumero1 for an heritability of 50\%. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. Horizontal panels are presenting results for the ``simple'' and ``fancy'' models for simulating phenotypes. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:supp-AUC-triple}
 \end{figure}
 
@@ -499,7 +512,7 @@ We also use this procedure to derive an early stopping criterion so that the alg
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{supp-biglasso}}
-\caption{Comparison of ``logit-triple'' and the best prediction (among 100 tested $\lambda$ values) for ``biglasso'' (another implementation of penalized logistic regression) in scenario \textnumero1. Simulations use the ``simple'' model, an heritability of 80\% and $\alpha = 1$. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 100 simulations. \textbf{C:} Boxplots of execution times for 100 simulations.}
+\caption{Comparison of PLR and the best prediction (among 100 tested $\lambda$ values) for ``biglasso'' (another implementation of penalized logistic regression -- \cite{zeng2017efficient}) in scenario \textnumero1. Simulations use model ``ADD'', an heritability of 80\% and $\alpha = 1$. Vertical panels are presenting results for effects following a Gaussian or Laplace distribution. \textbf{A:} Mean of AUC over 100 simulations. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean of AUC. The blue dotted line represents the maximum achievable AUC. \textbf{B:} Boxplots of numbers of predictors used by the methods for 100 simulations. \textbf{C:} Boxplots of execution times for 100 simulations.}
 \label{fig:supp-biglasso}
 \end{figure}
 

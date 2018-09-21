@@ -93,7 +93,7 @@ rename_lvl <- function(x) {
 #'
 read_format_results <- function(files, corr, ncores = nb_cores()) {
 
-  bigstatsr::big_parallelize(files, p.FUN = function(files, ind, corr) {
+  bigstatsr::big_apply(files, a.FUN = function(files, ind, corr) {
 
     files[ind] %>%
       purrr::map_dfr(~readRDS(.x)) %>%
@@ -103,7 +103,8 @@ read_format_results <- function(files, corr, ncores = nb_cores()) {
       add_sens_FDP(corr) %>%
       dplyr::select(-c(num.simu, true_set, set, pheno, pred))
 
-  }, p.combine = bind_rows, ind = seq_along(files), ncores = ncores, corr = corr)
+  }, a.combine = bind_rows, ind = seq_along(files),
+  ncores = ncores, block.size = 100, corr = corr)
 }
 
 ################################################################################
