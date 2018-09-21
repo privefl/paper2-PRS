@@ -15,6 +15,7 @@ options(width = 95)
 library(tidyverse)
 library(bigsnpr)
 library(pkg.paper.PRS)
+pAUC <- pkg.paper.PRS:::pAUC
 ```
 
 ## Data
@@ -42,7 +43,7 @@ ind.train <- sort(sample(nrow(G), size = 12e3))
 ind.test <- setdiff(rows_along(G), ind.train)
 ```
 
-### PRS
+### C+T
 
 ```{r, cache=TRUE}
 # GWAS
@@ -87,7 +88,7 @@ ind.keep <- snp_clumping(G, infos.chr = CHR,
 ```
 
 ```{r, cache=TRUE}
-# PRS
+# C+T
 thrs <- c(0, -log10(5e-8), exp(seq(log(0.1), log(100), length.out = 100)))
 lpS <- -predict(gwas.train.gc)
 prs <- snp_PRS(G, betas.keep = gwas.train.gc$estim[ind.keep],
@@ -102,10 +103,8 @@ nb.pred[which.max(aucs)]
 ```
 
 ```{r}
-pAUC <- pkg.paper.PRS:::pAUC
-
 plot_density_AUC <- function(pred, true = y[ind.test]) {
-  true_fct <- forcats::fct_recode(as.factor(true), "Control" = "0", "Case" = "1")
+  true_fct <- forcats::fct_recode(as.factor(true), Control = "0", Case = "1")
   data.frame(Score = pred, Status = true_fct) %>%
   ggplot() +
   geom_density(aes(Score, fill = Status), alpha = 0.4) +
@@ -124,7 +123,7 @@ plot_density_AUC <- function(pred, true = y[ind.test]) {
 Cross-Model Selection and Averaging (CMSA):
 
 ```{r, cache=TRUE}
-# Train logit-simple
+# Train PLR
 system.time(
   logit <- big_spLogReg(X = G, y01.train = y[ind.train], 
                         ind.train = ind.train, 
@@ -142,7 +141,7 @@ preds1 <- predict(logit, X = G, ind.row = ind.test,
 (p2 <- plot_density_AUC(preds1))
 ```
 
-### Logistic regression with feature engineering
+### Logistic regression with feature engineering (PLR3)
 
 ```{r, cache=TRUE}
 system.time(
@@ -177,15 +176,15 @@ ggsave("figures/supp-score-densities.pdf", scale = 1/100, width = 780, height = 
 library(plotROC)
 scores_tidy <- tibble(
   d = y[ind.test], 
-  "PRS-max"      = prs[, which.max(aucs)],
-  "logit-simple" = preds1,
-  "logit-triple" = preds2
+  "C+T-max" = prs[, which.max(aucs)],
+  "PLR"     = preds1,
+  "PLR3"    = preds2
 ) %>%
   gather(key = "Method", value = "Score", -d)
   
 methods.color <- setNames(scales::hue_pal()(6), 
-                          c("logit-simple", "PRS-max", "PRS-stringent",
-                            "T-Trees", "logit-triple", "PRS-all")) 
+                          c("PLR", "C+T-max", "C+T-stringent",
+                            "T-Trees", "PLR3", "C+T-all")) 
 
 ggplot(scores_tidy, aes(d = d, m = Score, color = Method, linetype = Method)) +
   style_roc(xlab = "1 - Specificity", ylab = "Sensitivity") +
@@ -245,6 +244,8 @@ list.files(path = "results6/", full.names = TRUE) %>%
   map_df(readRDS) %>%
   as_tibble() %>%
   mutate(
+    method = fct_recode(sub("PRS", "C+T", method), 
+                        PLR = "logit-simple", PLR3 = "logit-triple"),
     AUC = map2_dbl(pred, pheno, ~bigstatsr::AUC(.x, .y)),
     pAUC = map2_dbl(pred, pheno, ~pAUC(.x, .y)),
     nb.preds = map_int(set, length)

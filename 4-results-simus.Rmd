@@ -1,7 +1,7 @@
 ---
 title: "Results"
 author: "Florian Privé"
-date: "November 17, 2017"
+date: "September 21, 2018"
 output: 
   html_document:
     code_folding: hide
@@ -19,7 +19,7 @@ library(tidyverse)
 library(bigsnpr)
 # devtools::install_github("privefl/paper2-PRS/pkg.paper.PRS")
 library(pkg.paper.PRS)  ## See code source for functions' code.
-options(nboot = 1e3)
+options(nboot = 1e5)
 ```
 
 ## Useful functions
@@ -81,10 +81,10 @@ barplot_causal_all <- function(results) {
 ```
 
 ```{r}
-compare_logit <- function(results, with_method) {
+compare_PLR <- function(results, with_method) {
   
   results <- filter(
-    results, method %in% c("logit-simple", with_method), par.h2 == 0.8)
+    results, method %in% c("PLR", with_method), par.h2 == 0.8)
   
   results.summary <- results %>%
     group_by_at(c(vars(starts_with("par")), "method")) %>%
@@ -153,29 +153,29 @@ results1 <- list.files("results1", full.names = TRUE) %>%
 ```
 
 ```{r, out.width="90%", fig.width = 14}
-compare_logit(results1, with_method = "T-Trees")
+compare_PLR(results1, with_method = "T-Trees")
 
 ggsave("figures/supp-ttrees.pdf", scale = 1/100, width = 1400, height = 1060)
 ```
 
-## Results with logit-triple & model fancy
+## Results with PLR3 & model COMP
 
 ```{r}
 results2 <- list.files("results2", full.names = TRUE) %>%
   read_format_results(corr)
 ```
 
-### Results with logit-triple
+### Results with PLR3
 
 ```{r, out.width="90%", fig.width = 14}
-compare_logit(results2, with_method = "logit-triple")
+compare_PLR(results2, with_method = "PLR3")
 
 ggsave("figures/supp-triple.pdf", scale = 1/100, width = 1400, height = 1060)
 ```
 
 ```{r}
 results2 %>%
-  filter(grepl("logit", method)) %>%
+  filter(grepl("PLR", method)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
   barplot_causal_one(h2 = 0.5) +
@@ -185,11 +185,11 @@ ggsave("figures/supp-AUC-triple.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 
-### Results with model fancy
+### Results with model COMP
 
 ```{r}
 results2 %>%
-  filter(par.model == "fancy", method %in% c("logit-simple", "PRS-max")) %>%
+  filter(par.model == "COMP", method %in% c("PLR", "C+T-max")) %>%
   filter(thr.r2 == 0.2 | is.na(thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
@@ -200,7 +200,7 @@ ggsave("figures/supp-AUC-logit-fancy.pdf", scale = 1/110, width = 1242, height =
 
 ```{r}
 results2 %>%
-  filter(par.model == "fancy", grepl("PRS", method)) %>%
+  filter(par.model == "COMP", grepl("C\\+T", method)) %>%
   filter(thr.r2 == 0.2 | is.na(thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
@@ -209,13 +209,13 @@ results2 %>%
 ggsave("figures/supp-AUC-PRS-fancy.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
-## Results with only logit-simple & PRSs
+## Results with only PLR & C+T
 
 ### Different r2 thresholds
 
 ```{r}
 results2.all.r2 <- results2 %>%
-  filter(par.model == "simple", method %in% c("logit-simple", "PRS-max")) %>%
+  filter(par.model == "ADD", method %in% c("PLR", "C+T-max")) %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
@@ -227,7 +227,7 @@ ggsave("figures/supp-AUC-all-r2.pdf", scale = 1/110, width = 1242, height = 951)
 
 ```{r}
 results2 %>%
-  filter(par.model == "simple", method %in% c("logit-simple", "PRS-max")) %>%
+  filter(par.model == "ADD", method %in% c("PLR", "C+T-max")) %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AltSens_mean = mean(AltSens), AltSens_boot = boot(AltSens), N = n()) %>%
@@ -251,12 +251,12 @@ ggsave("figures/supp-AltSens-all-r2.pdf", scale = 1/110, width = 1242, height = 
 ```{r}
 results3 <- results2 %>%
   filter(thr.r2 == 0.2 | is.na(thr.r2)) %>%
-  filter(par.model == "simple", method != "logit-triple")
+  filter(par.model == "ADD", method != "PLR3")
 ```
 
 ```{r, fig.asp=0.7, out.width="95%", fig.width=16}
 results3 %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
   mutate(Parameters  = interaction(par.h2, par.dist, method, sep = " | ")) %>%
   myggplot(aes(AUC, pAUC, color = Parameters)) + 
   geom_point(size = 0.6, alpha = 0.5) +
@@ -284,7 +284,7 @@ results3.summary <- results3 %>%
 
 ```{r, fig.asp = 1, out.width = "60%", fig.width=8}
 results3.summary %>%
-  filter(method %in% c("logit-simple", "PRS-max"), par.model == "simple") %>%
+  filter(method %in% c("PLR", "C+T-max"), par.model == "ADD") %>%
   barplot_causal_one(h2 = 0.8)
 
 ggsave("figures/main-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
@@ -292,7 +292,7 @@ ggsave("figures/main-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
 
 ```{r, fig.asp = 1, out.width = "60%", fig.width=8}
 results3.summary %>%
-  filter(grepl("PRS", method)) %>%
+  filter(grepl("C\\+T", method)) %>%
   barplot_causal_one(h2 = 0.8)
 
 ggsave("figures/main-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
@@ -300,7 +300,7 @@ ggsave("figures/main-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
 
 ```{r, fig.asp = 1, out.width = "60%", fig.width=8}
 results3.summary %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
   barplot_causal_one(h2 = 0.5)
 
 ggsave("figures/supp-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
@@ -308,7 +308,7 @@ ggsave("figures/supp-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
 
 ```{r, fig.asp = 1, out.width = "60%", fig.width=8}
 results3.summary %>%
-  filter(grepl("PRS", method)) %>%
+  filter(grepl("C\\+T", method)) %>%
   barplot_causal_one(h2 = 0.5)
 
 ggsave("figures/supp-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
@@ -323,7 +323,7 @@ results4 <- list.files("results4", full.names = TRUE) %>%
 
 ```{r}
 results4 %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
   mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n()) %>%
@@ -341,10 +341,11 @@ results5 <- list.files("results5", full.names = TRUE) %>%
   read_format_results(corr)
 
 results6 <- results2 %>%
-  filter(par.model == "simple", par.causal == "300 in all") %>%
+  filter(par.model == "ADD", par.causal == "300 in all") %>%
   bind_rows(results5) %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
-  mutate(method = c_method_r2(method, thr.r2))
+  filter(method %in% c("PLR", "C+T-max")) %>%
+  mutate(method = c_method_r2(method, thr.r2),
+         par.causal = as.character(par.causal))
 ```
 
 ```{r}
@@ -375,7 +376,7 @@ ggsave("figures/main-AUC-ntrain.pdf", scale = 1/100, width = 1050, height = 800)
 ```{r, fig.asp=0.65, out.width="95%", fig.width=16}
 list.files("results7", full.names = TRUE) %>%
   read_format_results(corr) %>%
-  compare_logit("biglasso")
+  compare_PLR("biglasso")
 
 ggsave("figures/supp-biglasso.pdf", scale = 1/100, width = 1600, height = 1000)
 ```
