@@ -15,15 +15,15 @@ results6-save
 results7
 results8
 results8-save
-draft.bbl
-draft.blg
-draft.dvi
-draft.log
-draft.out
-draft.pdf
-draft.synctex.gz
-draft.aux
-draft.tex.bak
+*.bbl
+*.blg
+*.dvi
+*.log
+*.out
+paper/*.pdf
+*.synctex.gz
+*.aux
+*.tex.bak
 # History files
 .Rhistory
 .Rapp.history
