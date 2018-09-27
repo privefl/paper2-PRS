@@ -1,7 +1,7 @@
 ---
 title: "Results"
 author: "Florian Privé"
-date: "March 19, 2018"
+date: "September 27, 2018"
 output: 
   html_document:
     code_folding: hide
@@ -17,57 +17,32 @@ options(width = 110)
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(pkg.paper.PRS)
+options(nboot = 1e4)
 
-methods.color <- setNames(scales::hue_pal()(6), 
-                          c("logit-simple", "PRS-max", "PRS-stringent",
-                            "T-Trees", "logit-triple", "PRS-all")) 
-```
-
-```{r}
-pAUC <- function(pred, target, p = 0.1) {
-  val.min <- min(target)
-  q <- quantile(pred[target == val.min], probs = 1 - p)
-  ind <- (target != val.min) | (pred > q)
-  tryCatch(bigstatsr::AUC(pred[ind], target[ind]) * p, 
-           error = function(e) p^2 / 2)  # all same prediction
-}
-
-format_results <- function(results) {
-  results %>%
-    as_tibble() %>%
-    filter(par.h2 == 0.8, par.dist == "gaussian") %>%
-    mutate(
-      par.causal = factor(map_chr(par.causal, ~paste(.x[1], .x[2], sep = " in ")),
-                          levels = c("30 in HLA", paste(3 * 10^(1:3), "in all"))),
-      AUC = map_dbl(eval, ~ bigstatsr::AUC(.x[, 1], .x[, 2])),
-      pAUC = map_dbl(eval, ~ pAUC(.x[, 1], .x[, 2]))
-    )
-}
-```
-
-```{r}
-boot <- function(x, n = 1e5, f = mean) {
-  sd(replicate(n, f(sample(x, replace = TRUE))))
-}
+COLORS <- scales::hue_pal()(6)
+methods.color <- setNames(
+  c(COLORS, COLORS[c(4, 2, 5)], "black"), 
+  c("PLR", "C+T-max", "C+T-stringent", "T-Trees", "PLR3", "C+T-all",
+    "C+T-max-0.05", "C+T-max-0.2", "C+T-max-0.8", "biglasso")
+) 
 ```
 
 ```{r}
 myggplot <- function(..., coeff = 1) {
-  bigstatsr:::MY_THEME(ggplot(...), coeff = coeff) +
-  theme(strip.text.x = element_text(size = rel(2)),
-        strip.text.y = element_text(size = rel(2)))
+  ggplot(...) + bigstatsr::theme_bigstatsr(size.rel = coeff)
 } 
 ```
 
 ```{r}
-barplot_causal <- function(results, h2) {
+barplot_causal <- function(results) {
   
   results %>%
     myggplot(aes(par.causal, AUC_mean, fill = method, color = method)) +
     geom_hline(yintercept = 0.5, linetype = 2) +
-    geom_col(position = position_dodge(), alpha = 0.3) +
+    geom_col(position = position_dodge(), alpha = 0.5, color = "black", size = 1) +
     geom_errorbar(aes(ymin = AUC_mean - 2 * AUC_boot, ymax = AUC_mean + 2 * AUC_boot),
-                  position = position_dodge(width = 0.9), color = "black", width = 0.2) + 
+                  position = position_dodge(width = 0.9), color = "black", width = 0.2, size = 1) + 
     scale_y_continuous(limits = c(0.5, NA), minor_breaks = 0:20 / 20,
                        oob = scales::rescale_none) +
     labs(x = "Causal SNPs (number and location)", y = "Mean of 100 AUCs",
@@ -85,9 +60,9 @@ barplot_causal_one <- function(results) {
 ```
 
 ```{r}
-compare_logit <- function(results, with_method) {
+compare_PLR <- function(results, with_method) {
   
-  results <- filter(results, method %in% c("logit-simple", with_method))
+  results <- filter(results, method %in% c("PLR", with_method))
   
   results.summary <- results %>%
     group_by_at(c(vars(starts_with("par")), "method")) %>%
@@ -102,7 +77,8 @@ compare_logit <- function(results, with_method) {
       myggplot() +
       geom_boxplot(aes_string("par.causal", y, color = "method", 
                               fill = "method"), alpha = 0.3) + 
-      theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      facet_grid(par.model ~ .) +
       labs(x = "Causal SNPs (number and location)", y = ylab, 
            fill = "Method", color = "Method") +
       theme(legend.position = "none") +
@@ -119,7 +95,7 @@ compare_logit <- function(results, with_method) {
   p2 <- cowplot::plot_grid(
     plot_extra("nb.preds", "Number of predictors"),
     plot_extra("timing", "Execution time (in seconds)"),
-    ncol = 1, align = "hv", scale = 0.90, 
+    ncol = 1, align = "hv", scale = 0.95, 
     labels = LETTERS[2:3], label_size = 20
   )
   
@@ -136,125 +112,102 @@ compare_logit <- function(results, with_method) {
 }
 ```
 
-## Results with T-Trees
-
 ```{r}
-results1 <- list.files("results1", full.names = TRUE) %>%
-  map_dfr(~readRDS(.x)) %>%
-  format_results()
-```
-
-```{r, out.width="90%", fig.width = 14}
-compare_logit(results1, with_method = "T-Trees")
-
-ggsave("figures/pres-ttrees.svg", scale = 1/100, width = 1300, height = 1060)
+corr <- readRDS("backingfiles/corr2.rds")
 ```
 
 ## Results with logit-triple & model fancy
 
 ```{r}
 results2 <- list.files("results2", full.names = TRUE) %>%
-  map_dfr(~readRDS(.x)) %>%
-  format_results()
-
-results2.summary <- results2 %>%
-  group_by_at(c(vars(starts_with("par")), "method")) %>%
-  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
+  read_format_results(corr) %>%
+  filter(par.h2 == 0.8, par.dist == "Gaussian")
 ```
 
-### Results with logit-triple
+### Results with PLR3
 
 ```{r, out.width="90%", fig.width = 14}
-compare_logit(results2, with_method = "logit-triple")
+compare_PLR(results2, with_method = "PLR3")
 
-ggsave("figures/pres-triple.svg", scale = 1/100, width = 1300, height = 1060)
+ggsave("../thesis-docs/figures/pres2-triple.svg", scale = 1/100, width = 1300, height = 1060)
 ```
 
 ## Results with only logit-simple & PRSs
 
-```{r}
-results3 <- results2 %>%
-  filter(par.model == "simple", method != "logit-triple")
-```
-
 ### 6000 in training & all chromosomes
 
 ```{r}
-results3.summary <- results3 %>%
+results2.summary <- results2 %>%
+  filter(par.model == "ADD", method != "PLR3") %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
 ```
 
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
-results3.summary %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
+```{r}
+results2.summary %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
   barplot_causal_one()
 
-ggsave("figures/pres-AUC-logit.svg", scale = 1/110, width = 1045, height = 770)
+ggsave("../thesis-docs/figures/pres2-AUC-logit.svg", scale = 1/110, width = 1045, height = 770)
 ```
 
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
-results3.summary %>%
-  filter(grepl("PRS", method)) %>%
+```{r}
+results2.summary %>%
+  filter(grepl("C\\+T", method)) %>%
   barplot_causal_one()
 
-ggsave("figures/pres-AUC-PRS.svg", scale = 1/110, width = 1045, height = 770)
+ggsave("../thesis-docs/figures/pres2-AUC-PRS.svg", scale = 1/110, width = 1045, height = 770)
 ```
 
 ### 6000 in training & only chromosome 6
 
 ```{r}
 results4 <- list.files("results4", full.names = TRUE) %>%
-  map_dfr(~readRDS(.x)) %>%
-  format_results()
+  read_format_results(corr) %>%
+  filter(par.h2 == 0.8, par.dist == "Gaussian")
 
-results4 %>%
+results4.summary <- results4 %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
+  mutate(method = c_method_r2(method, thr.r2)) %>%
   group_by_at(c(vars(starts_with("par")), "method")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
 
-results34 <- rbind(
-  cbind(simu = "all", results3),
-  cbind(simu = "chr6", results4)
-) %>%
-  as_tibble()
+results2.all.r2 <- results2 %>%
+  filter(par.model == "ADD", method %in% c("PLR", "C+T-max")) %>%
+  mutate(method = c_method_r2(method, thr.r2)) %>%
+  group_by_at(c(vars(starts_with("par")), "method")) %>%
+  summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
 ```
 
-```{r, fig.asp = 1, out.width = "90%"}
-results34 %>%
-  filter(par.h2 == 0.8, par.dist == "gaussian", method %in% c("logit-simple", "PRS-max")) %>%
-  myggplot() +
-  geom_hline(yintercept = 0.5, linetype = 2) +
-  geom_hline(aes(yintercept = 0.94), linetype = 3, color = "blue") +
-  geom_boxplot(aes(method, AUC, fill = simu, color = simu), alpha = 0.3) + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
-  facet_grid(. ~ par.causal) +
-  scale_fill_brewer(type = "qual", palette = 2) +
-  scale_color_brewer(type = "qual", palette = 2) + 
-  labs(x = "Method")
+```{r}
+results4.summary %>%
+  barplot_causal_one() + 
+  geom_col(aes(par.causal, AUC_mean), data = results2.all.r2, 
+           position = position_dodge(), color = "black", alpha = 0)
 
-ggsave("figures/pres-AUC-chr6.svg", scale = 1/110, width = 990, height = 700)
+ggsave("../thesis-docs/figures/pres2-AUC-chr6.svg", scale = 1/110, width = 990, height = 700)
 ```
 
 ### Varying training size & all shromosomes
 
 ```{r}
 results5 <- list.files("results5", full.names = TRUE) %>%
-  map_dfr(~readRDS(.x)) %>%
-  format_results()
+  read_format_results(corr) %>%
+  filter(par.h2 == 0.8, par.dist == "Gaussian")
 
 results5.summary <- results5 %>%
   group_by_at(c(vars(starts_with("par")), "method", "n.train")) %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
 
-results35.summary <- results3.summary %>%
-  filter(par.causal == "300 in all") %>%
+results35.summary <- results2.summary %>%
   cbind.data.frame(n.train = 6000) %>%
-  bind_rows(results5.summary)
+  bind_rows(results5.summary) %>%
+  filter(par.causal == "300 in all")
 ```
 
 ```{r}
 results35.summary %>%
-  filter(method %in% c("logit-simple", "PRS-max")) %>%
+  filter(method %in% c("PLR", "C+T-max")) %>%
   myggplot(aes(n.train, AUC_mean, color = method, linetype = method)) +
   geom_hline(yintercept = 0.5, linetype = 2) +
   geom_hline(aes(yintercept = 0.94), linetype = 3, color = "blue") +
@@ -269,6 +222,6 @@ results35.summary %>%
        color = "Method", linetype = "Method") +
   theme(legend.key.width = unit(3, "line"))
 
-ggsave("figures/pres-AUC-ntrain.svg", scale = 1/100, width = 870, height = 635)
+ggsave("../thesis-docs/figures/pres2-AUC-ntrain.svg", scale = 1/100, width = 870, height = 635)
 ```
 
