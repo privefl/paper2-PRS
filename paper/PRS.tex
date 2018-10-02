@@ -60,15 +60,15 @@
 
 
 \title{Efficient implementation of penalized regression\\for genetic risk prediction}
-\author{Florian Priv\'e\,$^{\text{ 1,}*}$, Hugues Aschard\,$^{\text{2}}$ and Michael G.B. Blum\,$^{\text{1,}*}$}
+\author{Florian Priv\'e,$^{\text{1,}*}$ Hugues Aschard$^{\text{2}}$ and Michael G.B. Blum$^{\text{1,}*}$}
 
 
 
 \date{~ }
 \maketitle
 
-\noindent$^{\text{\sf 1}}$Univ.\ Grenoble Alpes, CNRS, Laboratoire TIMC-IMAG, UMR 5525, France, \\
-\noindent$^{\text{\sf 2}}$Centre de Bioinformatique, Biostatistique et Biologie Int\'egrative (C3BI), Institut Pasteur, Paris, France.
+\noindent$^{\text{\sf 1}}$Laboratoire TIMC-IMAG, UMR 5525, Univ.\ Grenoble Alpes, CNRS, La Tronche (38700), France, \\
+\noindent$^{\text{\sf 2}}$Centre de Bioinformatique, Biostatistique et Biologie Int\'egrative (C3BI), Institut Pasteur, Paris (75015), France.
 
 \noindent$^\ast$To whom correspondence should be addressed.
 
@@ -127,15 +127,15 @@ We also use this dataset for real data application, in this case keeping all 15,
 
 \subsection{Simulations of phenotypes} \label{sec:simus}
 
-We simulate binary phenotypes using a Liability Threshold Model (LTM) with a prevalence of 30\% \cite[]{falconer1965inheritance}. We vary parameters of the simulations in order to match a range of genetic architecture from low to high polygenicity. 
-This is achieved by varying the number of causal variants and their location (30, 300, or 3000 anywhere in all 22 autosomal chromosomes or 30 in the HLA region of chromosome 6), and the disease heritability (50\% or 80\%). 
+We simulate binary phenotypes using a Liability Threshold Model (LTM) with a prevalence of 30\% \cite[]{falconer1965inheritance}. We vary simulation parameters in order to match a range of genetic architectures from low to high polygenicity. 
+This is achieved by varying the number of causal variants and their location (30, 300, or 3000 anywhere in all 22 autosomal chromosomes or 30 in the HLA region of chromosome 6), and the disease heritability $h^2$ (50\% or 80\%). 
 %SNP effects are drawn from either a Gaussian or from a Laplace distribution.
-Liability scores are computed either from an additive model with linear effects only (``ADD'') or a more complex model that combines additive, dominant and interaction-type effects (``COMP''). For model ``ADD'', we compute the liability score of the i-th individual \[y_i = \sum_{j\in S_\text{causal}} w_j \cdot \widetilde{G_{i,j}} ~~+~~ \epsilon_i~,\] where $w_j$ are weights generated from a Gaussian or a Laplace distribution, $G_{i,j}$ is the allele count of individual $i$ for SNP $j$, $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs), $\epsilon$ follows a Gaussian distribution $N(0, 1 - h^2)$ and $S_\text{causal}$ is the set of causal SNPs.
+Liability scores are computed either from a model with additive effects only (``ADD'') or a more complex model that combines additive, dominant and interaction-type effects (``COMP''). For model ``ADD'', we compute the liability score of the i-th individual \[y_i = \sum_{j\in S_\text{causal}} w_j \cdot \widetilde{G_{i,j}} ~~+~~ \epsilon_i~,\] where $S_\text{causal}$ is the set of causal SNPs, $w_j$ are weights generated from a Gaussian distribution $N(0, h^2 / \vert S_\text{causal} \vert)$ or a Laplace distribution $Laplace(0, \sqrt{h^2 / (2~\vert S_\text{causal} \vert)})$, $G_{i,j}$ is the allele count of individual $i$ for SNP $j$, $\widetilde{G_{i,j}}$ corresponds to its standardized version (zero mean and unit variance for all SNPs), and $\epsilon$ follows a Gaussian distribution $N(0, 1 - h^2)$.
 For model ``COMP'', we simulate liability scores using additive, dominant and interaction-type effects (see Supplementary Materials).
 
 We implement 3 different simulation scenarios, summarized in table \ref{tab:simus}.
 Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes -- 281,122 SNPs) and a training set of size 6000. It compares all methods described in section \ref{sec:methods}. For each combination of the remaining parameters, results are based on 100 simulations excepted when comparing PLR with T-Trees, which relies on 5 simulations only because of a much higher computational burden of T-Trees as compared to other methods. 
-Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only (18,941 SNPs). Reducing the number of SNPs increases the polygenicity (i.e. the proportion of causal SNPs) of the simulated models. Reducing the number of SNPs ($p$) is also equivalent to increasing the sample size ($n$) as predictive power is dependent on $n/p$ \cite[]{dudbridge2013power,vilhjalmsson2015modeling}. For this scenario, we use the additive model only, but continue to vary all other simulation parameters. 
+Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only (18,941 SNPs). Reducing the number of SNPs increases the polygenicity (i.e.\ the proportion of causal SNPs) of the simulated models. Reducing the number of SNPs ($p$) is also equivalent to increasing the sample size ($n$) as predictive power is dependent on $n/p$ \cite[]{dudbridge2013power,vilhjalmsson2015modeling}. For this scenario, we use the additive model only, but continue to vary all other simulation parameters. 
 Finally, scenario \textnumero3 uses the whole dataset as in scenario \textnumero1 while varying the size of the training set in order to assess how the sample size affects predictive performance of methods. A total of 100 simulations per combination of parameters are run using 300 causal SNPs randomly chosen on the genome.
 
 
@@ -144,13 +144,13 @@ Finally, scenario \textnumero3 uses the whole dataset as in scenario \textnumero
 In this study, we use two different measures of predictive accuracy. First, we use the Area Under the Receiver Operating Characteristic (ROC) Curve (AUC) \cite[]{fawcett2006introduction,lusted1971signal}. In the case of our study, the AUC is the probability that the PRS of a case is greater than the PRS of a control.
 This measure indicates the extent to which we can distinguish between cases and controls using PRS. 
 As a second measure, we also report the partial AUC for specificities between 90\% and 100\% \cite[]{dodd2003partial,mcclish1989analyzing}. This measure is similar to the AUC, but focuses on high specificities, which is the most useful part of the ROC curve in clinical settings. 
-When reporting AUC results of simulations, we also report maximum achievable AUC values of 84\% and 94\% for heritabilities of respectively 50\% and 80\%. These estimates are based on three different yet consistent estimations (see Supplementary Materials). %Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
+When reporting AUC results of simulations, we also report maximum achievable AUC values of 84\% and 94\% for heritabilities of 50\% and 80\% respectively. These estimates are based on three different yet consistent estimations (see Supplementary Materials). %Note that we also report the timing of the main computations and the number of SNPs used in the predictions.
 
 \subsection{Methods compared} \label{sec:methods}
 
-In this study, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression (PLR).
+In this paper, we compare three different types of methods: the C+T method, T-Trees and penalized logistic regression (PLR).
 
-The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWAS). In GWAS, a coefficient of regression (i.e.\ the estimated effect size $\hat\beta_j$) is learned independently for each SNP $j$ along with a corresponding p-value $p_j$. The SNPs are first clumped (C) so that there remain only loci that are weakly correlated with one another (this set of SNPs is denoted $S_\text{clumping}$). Then, thresholding (T) consists in removing SNPs with p-values larger than a user-defined threshold $p_T$. Finally, the PRS for individual $i$ is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients \[\rm{PRS}_i = \sum_{\substack{j \in S_\text{clumping} \\ p_j~<~p_T}} \hat\beta_j \cdot G_{i,j}~,\] where $\hat\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS. In this study, we mostly report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb, but we also investigate thresholds of $0.05$ and $0.8$. We report three different scores of prediction: one including all the SNPs remaining after clumping (denoted ``C+T-all''), one including only SNPs remaining after clumping and that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$, ``C+T-stringent''), and one that maximizes the AUC (``C+T-max'') for 102 thresholds between $1$ and $10^{-100}$ (Table \ref{tab:thr}).
+The C+T (Clumping + Thresholding) method directly derives a Polygenic Risk Score (PRS) from the results of Genome-Wide Associations Studies (GWAS). In GWAS, a coefficient of regression (i.e.\ the estimated effect size $\hat\beta_j$) is learned independently for each SNP $j$ along with a corresponding p-value $p_j$. The SNPs are first clumped (C) so that there remain only loci that are weakly correlated with one another (this set of SNPs is denoted $S_\text{clumping}$). Then, thresholding (T) consists in removing SNPs with p-values larger than a user-defined threshold $p_T$. Finally, the PRS for individual $i$ is defined as the sum of allele counts of the remaining SNPs weighted by the corresponding effect coefficients \[\rm{PRS}_i = \sum_{\substack{j \in S_\text{clumping} \\ p_j~<~p_T}} \hat\beta_j \cdot G_{i,j}~,\] where $\hat\beta_j$ ($p_j$) are the effect sizes (p-values) learned from the GWAS. In this study, we mostly report scores for a clumping threshold at $r^2 > 0.2$ within regions of 500kb, but we also investigate thresholds of $0.05$ and $0.8$. We report three different scores of prediction: one including all the SNPs remaining after clumping (denoted ``C+T-all''), one including only the SNPs remaining after clumping and that have a p-value under the GWAS threshold of significance ($p < 5 \cdot 10^{-8}$, ``C+T-stringent''), and one that maximizes the AUC (``C+T-max'') for 102 p-value thresholds between $1$ and $10^{-100}$ (Table \ref{tab:thr}).
 As we report the optimal threshold based on the test set, the AUC for ``C+T-max'' is an upper bound of the AUC for the C+T method.
 
 T-Trees (\textit{Trees inside Trees}) is an algorithm derived from random forests \cite[]{breiman2001random} that takes into account the correlation structure among the genetic markers implied by linkage disequilibrium in GWAS data \cite[]{botta2014exploiting}. We use the same parameters as reported in Table 4 of \cite{botta2014exploiting}, except that we use 100 trees instead of 1000. Using 1000 trees provides a minimal increase of AUC while requiring a disproportionately long processing time (e.g.\ AUC of 81.5\% instead of 81\%, data not shown). %We call this method ``T-Trees'' in the results.
@@ -166,7 +166,7 @@ Because of L1-regularization, the resulting vectors of coefficients are sparse a
 
 To capture recessive and dominant effects on top of additive effects in PLR, we use simple feature engineering: we construct a separate dataset with 3 times as many variables as the initial one. 
 For each SNP variable, we add two more variables coding for recessive and dominant effects: one variable is coded 1 if homozygous variant and 0 otherwise, and the other is coded 0 for homozygous referent and 1 otherwise.
-We refer to this method as ``PLR3'' in the rest of the paper.
+We then apply our PLR implementation to this dataset with 3 times as many variables as the initial one; we refer to this method as ``PLR3'' in the rest of the paper.
 
 \subsection{Evaluating predictive performance for Celiac data}
 
@@ -179,18 +179,15 @@ We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of p
 \subsection{Joint estimation improves predictive performance}
 
 We compared penalized logistic regression (PLR) with the C+T method using simulations of scenario \textnumero1 (Table \ref{tab:simus}).
-
-When simulating a model with 30 causal SNPs and an heritability of 80\%, PLR provides AUC of 93\%, nearly reaching the maximum achievable AUC of 94\%, whereas AUC values obtained with C+T range between 83\% and 90\% (Figures \ref{fig:main-AUC-logit} and \ref{fig:main-AUC-PRS}). 
+When simulating a model with 30 causal SNPs and an heritability of 80\%, PLR provides AUC of 93\%, nearly reaching the maximum achievable AUC of 94\% for this setting (Figure \ref{fig:main-AUC-logit}). 
 Moreover, PLR consistently provides higher predictive performance than C+T across all scenarios we considered, excepted in some cases of high polygenicity or small sample size where all methods perform poorly (AUC values below 60\% -- figures \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-logit}).
-
 PLR provides particularly higher predictive performance than C+T when there are correlations between predictors, i.e.\ when we choose causal SNPs to be in the HLA region. In this situation, the mean AUC reaches 92.5\% for PLR and 84\% for ``C+T-max'' (Figure \ref{fig:main-AUC-logit}).
-
 Note that, for the simulations, we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
 
 \subsection{Importance of hyper-parameters}
 
 In practice, a particular value of the threshold of inclusion of SNPs should be chosen for the C+T method and this choice can dramatically impact the predictive performance of C+T. 
-For example, in a model with 30 causal SNPs only, AUC ranges from less than 60\% when using all SNPs passing clumping to 90\% \emph{if} choosing the optimal p-value threshold (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
+For example, in a model with 30 causal SNPs, AUC ranges from less than 60\% when using all SNPs passing clumping to 90\% \emph{if} choosing the optimal p-value threshold (Figures \ref{fig:main-AUC-PRS} and \ref{fig:supp-AUC-PRS}).
 
 Concerning the $r^2$ threshold of the clumping step in C+T, we mostly used the common value of $0.2$. Yet, using a more stringent value of $0.05$ provides higher predictive performance than using $0.2$ in most of the cases we considered (Figures \ref{fig:supp-AUC-all-r2}, \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-chr6-all-r2})
 
@@ -204,7 +201,7 @@ As compared to PLR, T-Trees perform worse in terms of predictive ability, while 
 Even for simulations with model ``COMP'' in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower when using T-Trees than when using PLR (Figure \ref{fig:supp-ttrees}).
 
 We also compared the two penalized logistic regressions in scenario \textnumero1: PLR versus PLR3 that uses additional features (variables) coding for recessive and dominant effects.
-Predictive performance of PLR3 are nearly as good as PLR when there are only addtive effects (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For model ``COMP'', PLR3 provides AUC values at least 3.5\% higher than PLR, excepted when there are 3000 causal SNPs.
+Predictive performance of PLR3 are nearly as good as PLR when there are additive effects only (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For model ``COMP'', PLR3 provides AUC values at least 3.5\% higher than PLR, excepted when there are 3000 causal SNPs.
 Yet, PLR3 takes 2-3 times as much time to run and requires 3 times as much disk storage as PLR.
 
 \subsection{Simulations varying number of SNPs and training size} %%%%
@@ -220,7 +217,7 @@ Secondly, when varying the training size (scenario \textnumero3), we report an i
 Joint logistic regressions also provide higher AUC values for the Celiac data: 88.7\% with PLR and 89.1\% with PLR3 as compared to 82.5\% with ``C+T-max''.
 The relative increase in partial AUC, for specificities larger than 90\%, is even larger (42\% and 47\%) with partial AUC values of 0.0411, 0.0426 and 0.0289 obtained with PLR, PLR3 and ``C+T-max'', respectively.
 Moreover, logistic regressions use less predictors, respectively 1570, 2260 and 8360 (Table \ref{tab:results-celiac}, figure \ref{fig:celiac-roc} and supplementary notebook ``results-celiac'').
-In terms of computation time, we show that PLR, while learning jointly on all SNPs at once and testing four different hyper-parameter values, is almost as fast as the C+T method (190 vs 130 seconds), and PLR3 takes less than twice as long as PLR (296 vs 190 seconds).
+In terms of computation time, we show that PLR, while learning jointly on all SNPs at once and testing four different values for hyper-parameter $\alpha$, is almost as fast as the C+T method (190 vs 130 seconds), and PLR3 takes less than twice as long as PLR (296 vs 190 seconds).
 
 \begin{table}[h]
 \caption{Results for the real Celiac dataset. The results are averaged over 100 runs where the training step is randomly composed of 12,000 individuals. In the parentheses is reported the standard deviation of $10^5$ bootstrap samples of the mean of the corresponding variable. Results are reported with 3 significant digits.\label{tab:results-celiac}}
@@ -272,7 +269,7 @@ Moreover, it also improves predictive performance for the celiac disease.
 
 Yet, this approach is not able to detect interaction-type effects. 
 In order to capture interaction-type effects, we tested T-Trees, a method that is able to exploit SNP correlations and interactions thanks to special decision trees \cite[]{botta2014exploiting}. 
-However, predictive performance of T-Trees were consistently lower than with penalized logistic regression, even when simulating a model with dominant and interaction-type effects that T-Trees should be able to handle.
+However, predictive performance of T-Trees are consistently lower than with penalized logistic regression, even when simulating a model with dominant and interaction-type effects that T-Trees should be able to handle.
 
 \subsection{Limitations}
 
