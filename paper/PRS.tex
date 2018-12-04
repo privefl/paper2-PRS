@@ -139,7 +139,7 @@ Liability scores are computed either from a model with additive effects only (``
 For model ``COMP'', we simulate liability scores using additive, dominant and interaction-type effects (see Supplementary Materials).
 
 We implement 3 different simulation scenarios, summarized in table \ref{tab:simus}.
-Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes -- 281,122 SNPs) and a training set of size 6000. It compares all methods described in section \ref{sec:methods}. For each combination of the remaining parameters, results are based on 100 simulations excepted when comparing PLR with T-Trees, which relies on 5 simulations only because of a much higher computational burden of T-Trees as compared to other methods. 
+Scenario \textnumero1 uses the whole dataset (all 22 autosomal chromosomes -- 281,122 SNPs) and a training set of size 6000. It compares all methods described in section \ref{sec:methods}. For each combination of the remaining parameters, results are based on 100 simulations except when comparing PLR with T-Trees, which relies on 5 simulations only because of a much higher computational burden of T-Trees as compared to other methods. 
 Scenario \textnumero2 consists of 100 simulations per combination of parameters on a dataset composed of chromosome 6 only (18,941 SNPs). Reducing the number of SNPs increases the polygenicity (i.e.\ the proportion of causal SNPs) of the simulated models. Reducing the number of SNPs ($p$) is also equivalent to increasing the sample size ($n$) as predictive power is dependent on $n/p$ \cite[]{dudbridge2013power,vilhjalmsson2015modeling}. For this scenario, we use the additive model only, but continue to vary all other simulation parameters. 
 Finally, scenario \textnumero3 uses the whole dataset as in scenario \textnumero1 while varying the size of the training set in order to assess how the sample size affects predictive performance of methods. A total of 100 simulations per combination of parameters are run using 300 causal SNPs randomly chosen on the genome.
 
@@ -175,7 +175,7 @@ We then apply our PLR implementation to this dataset with 3 times as many variab
 
 \subsection{Evaluating predictive performance for Celiac data}
 
-We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of predictors and execution time for the original Celiac dataset with the observed case-control status: we randomly split 100 times the dataset in a training set of 12,000 indiduals and a test set composed of the remaining 3155 individuals.
+We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of predictors and execution time for the original Celiac dataset with the observed case-control status: we randomly split 100 times the dataset in a training set of 12,000 individuals and a test set composed of the remaining 3155 individuals.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -185,7 +185,7 @@ We use Monte Carlo cross-validation to compute AUC, partial AUC, the number of p
 
 We compared penalized logistic regression (PLR) with the C+T method using simulations of scenario \textnumero1 (Table \ref{tab:simus}).
 When simulating a model with 30 causal SNPs and an heritability of 80\%, PLR provides AUC of 93\%, nearly reaching the maximum achievable AUC of 94\% for this setting (Figure \ref{fig:main-AUC-logit}). 
-Moreover, PLR consistently provides higher predictive performance than C+T across all scenarios we considered, excepted in some cases of high polygenicity or small sample size where all methods perform poorly (AUC values below 60\% -- figures \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-logit}).
+Moreover, PLR consistently provides higher predictive performance than C+T across all scenarios we considered, except in some cases of high polygenicity or small sample size where all methods perform poorly (AUC values below 60\% -- figures \ref{fig:main-AUC-ntrain} and \ref{fig:supp-AUC-logit}).
 PLR provides particularly higher predictive performance than C+T when there are correlations between predictors, i.e.\ when we choose causal SNPs to be in the HLA region. In this situation, the mean AUC reaches 92.5\% for PLR and 84\% for ``C+T-max'' (Figure \ref{fig:main-AUC-logit}).
 Note that, for the simulations, we do not report results in terms of partial AUC because partial AUC values have a Spearman correlation of 98\% with the AUC results for all methods (Figure \ref{fig:supp-AUC-corr}).
 
@@ -206,7 +206,7 @@ As compared to PLR, T-Trees perform worse in terms of predictive ability, while 
 Even for simulations with model ``COMP'' in which there are dominant and interaction-type effects that T-Trees should be able to handle, AUC is still lower when using T-Trees than when using PLR (Figure \ref{fig:supp-ttrees}).
 
 We also compared the two penalized logistic regressions in scenario \textnumero1: PLR versus PLR3 that uses additional features (variables) coding for recessive and dominant effects.
-Predictive performance of PLR3 are nearly as good as PLR when there are additive effects only (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For model ``COMP'', PLR3 provides AUC values at least 3.5\% higher than PLR, excepted when there are 3000 causal SNPs.
+Predictive performance of PLR3 are nearly as good as PLR when there are additive effects only (differences of AUC are always smaller than 2\%) and can lead to significantly greater results when there are also dominant and interactions effects (Figures \ref{fig:supp-triple} and \ref{fig:supp-AUC-triple}). For model ``COMP'', PLR3 provides AUC values at least 3.5\% higher than PLR, except when there are 3000 causal SNPs.
 Yet, PLR3 takes 2-3 times as much time to run and requires 3 times as much disk storage as PLR.
 
 \subsection{Simulations varying number of SNPs and training size} %%%%
@@ -249,7 +249,7 @@ PLR3 & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \\
 In this comparative study, we present a computationally efficient implementation of penalized logistic regression (PLR). 
 This model can be used to build polygenic risk scores based on very large individual-level SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. 
 In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to substantially improve predictive performance as compared to the standard C+T approach in which SNP effects are learned independently. 
-PLR always outperform the C+T method, excepted in some highly underpowered cases, and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
+PLR always outperforms the C+T method, except in some highly underpowered cases, and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
 
 \subsection{Importance of hyper-parameters}
 
@@ -261,7 +261,7 @@ Based on the simulations, we find that using a stringent threshold ($r^2 = 0.05$
 The choice of the $p_T$ threshold is also very important as it can greatly impact the predictive performance of the C+T method, which we confirm in this study \cite[]{ware2017heterogeneity}. 
 In this paper, we reported the maximum AUC of 102 different p-value thresholds, a threshold that should normally be learned on the training set only. To our knowledge, there is no clear standard on how to choose these two critical hyper-parameters for C+T.
 
-On the contrary, for the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the model training thanks to the development of an early stopping criterion. 
+In contrast, for the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the model training thanks to the development of an early stopping criterion. 
 Usually, cross-validation is used to choose hyper-parameter values and then the model is trained again with these particular hyper-parameter values \cite[]{Hastie2008,wei2013large}. Yet, performing cross-validation and retraining the model is computationally demanding; CMSA offers a less burdensome alternative. 
 Concerning hyper-parameter $\alpha$ that accounts for the relative importance of the L1 and L2 regularizations, we use a grid  search directly embedded in the CMSA procedure. 
 %Our penalized logistic regression implementation does not allow for setting $\alpha = 0$, a model that would assume the infinitesimal model. Yet, if using e.g.\ $\alpha = 0.001$, it would lead to a similar model.
@@ -327,21 +327,21 @@ scenario & & training set & (number and location) & of effects & & model & \\
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-logit}}
-\caption{Main comparison of C+T and PLR in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean AUC over 100 simulations for PLR and the maximum AUC reported with ``C+T-max''. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Main comparison of C+T and PLR in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean AUC over 100 simulations for PLR and the maximum AUC reported with ``C+T-max''. Upper (lower) panel is presenting results for effects following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-logit}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-PRS}}
-\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean AUC over 100 simulations. Upper (lower) panel is presenting results for effets following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of three different p-value thresholds used in the C+T method in scenario \textnumero1 for model ``ADD'' and an heritability of 80\%. Mean AUC over 100 simulations. Upper (lower) panel is presenting results for effects following a Gaussian (Laplace) distribution. Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-PRS}
 \end{figure}
 
 \newpage
 \begin{figure}[h]
 \centerline{\includegraphics[width=\textwidth]{main-AUC-ntrain}}
-\caption{Comparison of methods when varying sample size in scenario \textnumero3 for model ``ADD'' with 300 causal SNPs sampled anywhere on the genome. Mean AUC over 100 simulations for the maximum values of C+T for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and PLR as a function of the training size. Upper (lower) panels are presenting results for effets following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
+\caption{Comparison of methods when varying sample size in scenario \textnumero3 for model ``ADD'' with 300 causal SNPs sampled anywhere on the genome. Mean AUC over 100 simulations for the maximum values of C+T for three different $r^2$ thresholds ($0.05$, $0.2$ and $0.8$) and PLR as a function of the training size. Upper (lower) panels are presenting results for effects following a Gaussian (Laplace) distribution and left (right) panels are presenting results for an heritability of 0.5 (0.8). Error bars are representing $\pm 2 \text{SD}$ of $10^5$ non-parametric bootstrap of the mean AUC. The blue dotted line represents the maximum achievable AUC.}
 \label{fig:main-AUC-ntrain}
 \end{figure}
 
