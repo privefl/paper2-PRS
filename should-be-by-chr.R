@@ -40,8 +40,7 @@ system.time(eigs <- eigen(K[], symmetric = TRUE))  ## 11 sec
 str(eigs)
 tail(eigs$values)
 
-# ind <- head(seq_along(eigs$values), -1)
-ind <- which(eigs$values > sqrt(ncol(K)))
+ind <- head(seq_along(eigs$values), -1)
 mid <- tcrossprod(sweep(eigs$vectors[, ind], 2, eigs$values[ind], '/'))
 y2 <- beta / sc
 mid_beta <- mid %*% (big_prodVec(G, y2, ind.test) - drop(crossprod(y2, mc)))
@@ -70,17 +69,17 @@ system.time(
 ) # 135 sec
 system.time(eigs <- eigen(K[]))  ## 11 sec
 
-# ind <- head(seq_along(eigs$values), -1)
-ind <- which(eigs$values > sqrt(ncol(K)))
+ind <- head(seq_along(eigs$values), -1)
 mid <- tcrossprod(sweep(eigs$vectors[, ind], 2, eigs$values[ind], '/'))
 
 # Chromosome 6 only
 test <- lapply(1:22, function(chr) {
+  
   print(chr)
   ind.chr <- which(CHR == chr)
   
-  mc <- attr(K, "center")[ind.chr]
-  sc <- attr(K, "scale")[ind.chr]
+  # sc <- attr(K, "scale")[ind.chr]
+  sc <- big_scale()(G, ind.test, ind.chr)$scale
   
   y2 <- beta[ind.chr] / sc
   mid_beta <- mid %*% scale(big_prodVec(G, y2, ind.test, ind.chr), scale = FALSE)
@@ -92,14 +91,14 @@ test <- lapply(1:22, function(chr) {
 sapply(test, function(res) AUC(res$pred, y[ind.test]))
 AUC(rowSums(sapply(test, function(res) res$pred)), y[ind.test])
 
-plot(beta[CHR == chr], beta2, pch = 20)
+# plot(beta[CHR == chr], beta2, pch = 20)
 
 ### K chr by chr does not work
 # [1] 0.5285619 0.5267598 0.5337792 0.4877519 0.5086177 0.7339950 0.5205857 0.5187503
 # [9] 0.5228855 0.4968187 0.5215254 0.5029465 0.5071346 0.5088806 0.5159409 0.5296606
 # [17] 0.5112856 0.5183893 0.5041300 0.4967401 0.4970916 0.4998657
 
-### K for all
-# [1] 0.5377430 0.5522180 0.5114261 0.5328115 0.5059283 0.7172683 0.5439647 0.5295968
-# [9] 0.5006401 0.5057092 0.4960067 0.5287786 0.4867427 0.5094221 0.4941526 0.5324386
-# [17] 0.5498858 0.5146355 0.4965682 0.4946375 0.5139183 0.5004015
+### K for all (clumping does not improve results)
+# [1] 0.5373682 0.5302278 0.5422178 0.4907384 0.5230432 0.8137282 0.5132877 0.5133258
+# [9] 0.5309117 0.5148289 0.5135754 0.5071627 0.5141993 0.5276218 0.5114604 0.5342116
+# [17] 0.5229479 0.5113875 0.5069846 0.5014578 0.5221721 0.5103665
