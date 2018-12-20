@@ -9,6 +9,7 @@
 #' @param ind.train Indices corresponding to the training set.
 #' @param ind.test Indices corresponding to the test set.
 #' @param ncores Number of cores to use. Default is `bigstatsr::nb_cores()`.
+#' @param family Default is `"logistic"`. Can also use `"linear"`.
 #'
 #' @return A data frame with 5 variables:
 #'   - "method": the name of the method,
@@ -20,12 +21,17 @@
 #' @import bigsnpr
 #'
 PRS <- function(G, infos.chr, infos.pos,
-                pheno.all, covar.all, ind.train, ind.test, ncores = nb_cores()) {
+                pheno.all, covar.all, ind.train, ind.test,
+                ncores = nb_cores(), family = "logistic") {
 
   timing <- system.time({
 
     # GWAS
-    gwas.train <- bigstatsr::big_univLogReg(
+    gwas.train <- `if`(
+      family == "logistic",
+      bigstatsr::big_univLogReg,
+      bigstatsr::big_univLinReg
+    )(
       G, pheno.all[ind.train], ind.train = ind.train,
       covar.train = covar.all[ind.train, , drop = FALSE],
       ncores = ncores
@@ -92,11 +98,16 @@ PRS <- function(G, infos.chr, infos.pos,
 #'   - "set": the set of non-zero coefficients.
 #'
 logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method,
-                       alphas = c(1, 0.5, 0.05, 0.001), ncores = nb_cores()) {
+                       alphas = c(1, 0.5, 0.05, 0.001),
+                       ncores = nb_cores(), family = "logistic") {
 
   timing <- system.time({
 
-    cmsa.logit <- bigstatsr::big_spLogReg(
+    cmsa.logit <- `if`(
+      family == "logistic",
+      bigstatsr::big_spLogReg,
+      bigstatsr::big_spLinReg
+    )(
       X = G, y01.train = pheno.all[ind.train],
       ind.train = ind.train,
       covar.train = covar.all[ind.train, , drop = FALSE],

@@ -5,7 +5,7 @@
 \title{PRS (Clumping + Thresholding)}
 \usage{
 PRS(G, infos.chr, infos.pos, pheno.all, covar.all, ind.train, ind.test,
-  ncores = nb_cores())
+  ncores = nb_cores(), family = "logistic")
 }
 \arguments{
 \item{G}{A \link[=FBM.code256-class]{FBM.code256}
@@ -28,6 +28,8 @@ Typically \code{<bigSNP>$map$physical.pos}.}
 \item{ind.test}{Indices corresponding to the test set.}
 
 \item{ncores}{Number of cores to use. Default is \code{bigstatsr::nb_cores()}.}
+
+\item{family}{Default is \code{"logistic"}. Can also use \code{"linear"}.}
 }
 \value{
 A data frame with 5 variables:

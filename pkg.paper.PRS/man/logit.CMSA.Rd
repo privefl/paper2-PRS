@@ -5,7 +5,8 @@
 \title{Sparse Logistic Regression}
 \usage{
 logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, method,
-  alphas = c(1, 0.5, 0.05, 0.001), ncores = nb_cores())
+  alphas = c(1, 0.5, 0.05, 0.001), ncores = nb_cores(),
+  family = "logistic")
 }
 \arguments{
 \item{G}{A \link[=FBM.code256-class]{FBM.code256}
@@ -25,6 +26,8 @@ logit.CMSA(G, pheno.all, covar.all, ind.train, ind.test, method,
 \item{alphas}{See \link[bigstatsr:big_spLogReg]{bigstatsr::big_spLogReg}.}
 
 \item{ncores}{Number of cores to use. Default is \code{bigstatsr::nb_cores()}.}
+
+\item{family}{Default is \code{"logistic"}. Can also use \code{"linear"}.}
 }
 \value{
 A data frame with 5 variables:

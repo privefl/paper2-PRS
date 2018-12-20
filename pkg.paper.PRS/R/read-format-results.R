@@ -1,7 +1,8 @@
 ################################################################################
 
 utils::globalVariables(
-  c("par.causal", "num.simu", "true_set", "set", "pheno", "pred")
+  c("par.causal", "par.dist", "par.model", "method", "num.simu",
+    "true_set", "set", "pheno", "pred")
 )
 
 ################################################################################
