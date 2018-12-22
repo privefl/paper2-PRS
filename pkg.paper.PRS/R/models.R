@@ -61,7 +61,7 @@ PRS <- function(G, infos.chr, infos.pos,
                    lpS.keep = lpS[ind.keep],
                    thr.list = thrs)
 
-    ind.best <- which.max(apply(prs, 2, fun_msr, target = pheno.all[ind.test]))
+    ind.best <- which.max(apply(prs, 2, fun_msr, pheno.all[ind.test]))
 
     methods <- c("PRS-all", "PRS-stringent", "PRS-max")
     indices <- c(1:2, ind.best)
