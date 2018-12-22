@@ -24,14 +24,14 @@ PRS <- function(G, infos.chr, infos.pos,
                 pheno.all, covar.all, ind.train, ind.test,
                 ncores = nb_cores(), family = "logistic") {
 
+  fun_mod <- `if`(family == "logistic", bigstatsr::big_univLogReg,
+                  bigstatsr::big_univLinReg)
+  fun_msr <- `if`(family == "logistic", bigstatsr::AUC, stats::cor)
+
   timing <- system.time({
 
     # GWAS
-    gwas.train <- `if`(
-      family == "logistic",
-      bigstatsr::big_univLogReg,
-      bigstatsr::big_univLinReg
-    )(
+    gwas.train <- fun_mod(
       G, pheno.all[ind.train], ind.train = ind.train,
       covar.train = covar.all[ind.train, , drop = FALSE],
       ncores = ncores
@@ -61,7 +61,7 @@ PRS <- function(G, infos.chr, infos.pos,
                    lpS.keep = lpS[ind.keep],
                    thr.list = thrs)
 
-    ind.best <- which.max(apply(prs, 2, AUC, target = pheno.all[ind.test]))
+    ind.best <- which.max(apply(prs, 2, fun_msr, target = pheno.all[ind.test]))
 
     methods <- c("PRS-all", "PRS-stringent", "PRS-max")
     indices <- c(1:2, ind.best)
