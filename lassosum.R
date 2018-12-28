@@ -6,7 +6,6 @@ CHR <- celiac$map$chromosome
 POS <- celiac$map$physical.pos
 A1 <- celiac$map$allele1
 A2 <- celiac$map$allele2
-NCORES <- nb_cores()
 y <- celiac$fam$affection - 1
 
 dim(G)
@@ -25,8 +24,11 @@ system.time(
 hist(pval <- predict(gwas, log10 = FALSE))
 
 library(lassosum)
+unlink("backingfiles/celiac_test*")
+celiac$fam$affection <- y
 snp_writeBed(celiac, "backingfiles/celiac_test1.bed",
              ind.row = ind.test.split[[1]])
+celiac$fam$affection[] <- 9999      ## just to be sure that this is not used
 snp_writeBed(celiac, "backingfiles/celiac_test2.bed",
              ind.row = ind.test.split[[2]])
 cor <- p2cor(p = pval, n = 12e3, sign = gwas$estim)
@@ -34,7 +36,7 @@ cor <- ifelse(is.na(cor), max(abs(cor), na.rm = TRUE) * sign(gwas$estim), cor)
 library(doParallel)
 registerDoParallel(cl <- makeCluster(nb_cores()))
 system.time(
-  out <- lassosum.pipeline(cor = cor, chr = CHR, pos = POS, A1 = A1, A2 = A2,
+  out <- lassosum.pipeline(cor = cor, chr = CHR, pos = POS, A1 = A2, A2 = A1,
                            test.bfile = "backingfiles/celiac_test1",
                            LDblocks = "EUR.hg19",
                            cluster = cl)
@@ -46,8 +48,7 @@ out2 <- subset(out, s = v$best.s, lambda = v$best.lambda)
 v2 <- validate(out2, covar = U[ind.test.split[[2]], ],
                test.bfile = "backingfiles/celiac_test2")
 
-AUC(v2$pgs[[1]], v2$pheno - 1)  ## 0.204
-AUC(v2$best.pgs, v2$pheno - 1)  ## 0.205
+AUC(v2$best.pgs, y[ind.test.split[[2]]])  ## 83.34
 
 
 
