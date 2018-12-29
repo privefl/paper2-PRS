@@ -258,7 +258,12 @@ The computation time of our PLR implementation mainly depends on the sample size
 
 So, for highly polygenic traits such as height and when using huge datasets such as the UK Biobank, the algorithm might iterate over dozens of thousands of variables, which takes time (but still less than one day with our implementation). On the contrary, for traits like the celiac disease or breast cancer that seems to be less polygenic, a lot less variables are entering the model and the fitting is very fast (12 minutes only for 150K women of the UK Biobank for breast cancer!). Using more cases (there were only 3542 for Celiac and 6374 for Breast Cancer), one might achieve better predictive performance for these two diseases, and the computation time should stay within a few hours.
 
-Regarding memory requirements, this is basically the same as for computation time. Indeed, active variables are accessed in memory thanks to memory-mapping when they are used \cite[]{prive2017efficient}. If there are too many variables accessed, the operating system (OS) has to make some space for new comping variables. So, there should never be any memory issue thanks to memory-mapping, yet, at some point, if there are too many active variables, the OS would regularly swap memory between disk and RAM, which is very slow. If this happens for very large datasets, you can try to use less processing cores (as active sets tend to have non-overlapping variables because of LD) or buy more RAM. We have quickly tested processing each chromosome separately and then combining the models later but this did not seem to perform as well as fitting all SNPs at once.
+Regarding memory requirements, this is basically the same as for computation time. Indeed, active variables are accessed in memory thanks to memory-mapping when they are used \cite[]{prive2017efficient}. 
+If there are too many variables accessed, the operating system (OS) has to make some space for new comping variables. 
+So, there should never be any memory issue thanks to memory-mapping, yet, at some point, if there are too many active variables, the OS would regularly swap memory between disk and RAM, which is very slow. 
+If this happens for very large datasets, you can try to use less processing cores (as active sets tend to have non-overlapping variables because of LD) or buy more RAM. 
+We have quickly tested processing each chromosome separately and then combining the models later but this did not seem to perform as well as fitting all SNPs at once (data not shown). 
+Another widely used approach is to apply the penalized regression on a subset of SNPs using univariate tests (GWAS) to prioritize SNPs. Yet, this strategy was shown to reduce predictive power \cite[]{abraham2013performance,accuheight2018}, which we also confirm here by achieving a correlation of 65.5\% for height using 350K individuals of the UK Biobank, whereas \cite{accuheight2018} achieved only 61\% for the same sample size when using only 50K SNPs (see figure 3 of their paper).
 
 \subsection{Joint estimation improves predictive performance}
 
@@ -377,7 +382,7 @@ scenario & & training set & (number and location) & of effects & & model & \\
 \section*{Description of Supplemental Data}
 
 Supplemental Data include a PDF with two sections of methods, two tables and ten figures. 
-Supplemental Data also include six HTML R notebooks including all code and results used in this paper, for reproducibility purposes, and available at \url{https://figshare.com/articles/code/7178750}.
+Supplemental Data also include six HTML R notebooks including all code and results used in this paper, for reproducibility purposes, and available at \url{https://figshare.com/articles/code/7178750}. Additional analyses of the UK Biobank are available as 3 R scripts at \url{https://figshare.com/articles/code_UKB/7531559}.
 
 \section*{Declaration of Interests}
 
