@@ -106,7 +106,8 @@ Polygenic Risk Scores (PRS) consist in combining the information across many sin
 Yet, PRS would have to show a high discriminative power between cases and controls in order to be used for helping in the diagnosis of diseases. For screening high-risk individuals and for presymptomatic diagnosis of the general population, it is suggested that the AUC must be greater than 75\% and 99\% respectively \cite[]{janssens2007impact}.
 
 Several methods have been developed to predict disease status, or more generally any phenotype, based on SNP information. A commonly used method often called ``P+T'' or ``C+T'' (which stands for ``Clumping and Thresholding'') is used to derive PRS from results of Genome-Wide Association Studies (GWAS) \cite[]{chatterjee2013projecting,dudbridge2013power,evans2009harnessing,purcell2009common,wray2007prediction}. This technique uses GWAS summary statistics only, allowing for a fast implementation of C+T. However, C+T also has several limitations; for instance, previous studies have shown that predictive performance of C+T is very sensitive to the threshold of inclusion of SNPs, depending on the disease architecture \cite[]{ware2017heterogeneity}.
-Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{accuheight2018,yang2010common}. Yet, models resulting from LMM, known e.g.\ as ``gBLUP'', are not optimal for predicting disease status based on genotypes \cite[]{abraham2013performance}. Moreover, these methods and their derivatives are often computationally very demanding, both in terms of memory and time required, which makes them unlikely to be used for prediction on very large datasets \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
+Linear Mixed-Models (LMMs) are another widely-used method in fields such as plant and animal breeding or for predicting highly heritable quantitative human phenotypes such as height \cite[]{yang2010common}. Yet, models resulting from LMM, known e.g.\ as ``gBLUP'', are not optimal for predicting disease status based on genotypes (see table 2 of \cite{abraham2013performance}), maybe because they were not primarily designed for this purpose. 
+%Moreover, these methods and their derivatives are often computationally very demanding, both in terms of memory and time required, which makes them unlikely to be used for prediction on very large datasets \cite[]{golan2014effective,maier2015joint,speed2014multiblup,zhou2013polygenic}.
 Finally, statistical learning methods have also been used to derive PRS for complex human diseases by jointly estimating SNP effects. Such methods include joint logistic regression, Support Vector Machine (SVM) and random forests \cite[]{abraham2012sparsnp,abraham2014accurate,botta2014exploiting,okser2014regularized,wei2009disease}.
 
 We recently developed two R packages, bigstatsr and bigsnpr, for efficiently analyzing large-scale genome-wide data \cite[]{prive2017efficient}. Package bigstatsr now includes an efficient algorithm with a new implementation for computing sparse linear and logistic regressions on huge datasets as large as the UK Biobank \cite[]{bycroft2017genome}.
@@ -117,7 +118,7 @@ For PLR, the choice of hyper-parameters is included in the algorithm so that we 
 
 To perform simulations, we use real genotype data and simulate new phenotypes. 
 In order to make our comparison as comprehensive as possible, we compare different disease architectures by varying the number, size and location of causal effects as well as the disease heritability. We also compare two different models for simulating phenotypes, one with additive effects only, and one that combines additive, dominant and interaction-type effects.
-Overall, we find that PLR consistently achieves higher predictive performance than the C+T and T-Trees methods while being as fast as C+T. This demonstrates the feasibility and relevance of this approach for PRS computation using large individual-level datasets such as the UK Biobank. 
+Overall, we find that PLR achieves higher predictive performance than C+T except in highly underpowered cases (AUC values lower than 0.6), while being as fast. This demonstrates the feasibility and relevance of this approach for PRS computation based on large individual-level datasets that require scalable methods but offer some well power studies in return. 
 
 
 
@@ -223,7 +224,7 @@ Secondly, when varying the training size (scenario \textnumero3), we report an i
 Joint logistic regressions also provide higher AUC values for the Celiac data: 88.7\% with PLR and 89.1\% with PLR3 as compared to 82.5\% with ``C+T-max''.
 The relative increase in partial AUC, for specificities larger than 90\%, is even larger (42\% and 47\%) with partial AUC values of 0.0411, 0.0426 and 0.0289 obtained with PLR, PLR3 and ``C+T-max'', respectively.
 Moreover, logistic regressions use less predictors, respectively 1570, 2260 and 8360 (Table \ref{tab:results-celiac}, figure \ref{fig:celiac-roc} and supplementary notebook ``results-celiac'').
-In terms of computation time, we show that PLR, while learning jointly on all SNPs at once and testing four different values for hyper-parameter $\alpha$, is almost as fast as the C+T method (190 vs 130 seconds), and PLR3 takes less than twice as long as PLR (296 vs 190 seconds).
+In terms of computation time, we show that PLR, while learning jointly on all SNPs at once and testing four different values for hyper-parameter $\alpha$, is almost as fast as the C+T method (190 vs 130 seconds), and PLR3 takes less than twice as long as PLR (296 vs 190 seconds). Finally, on this Celiac dataset, our implementation of PLR runs 300 times as fast as SparSNP \cite[]{abraham2012sparsnp}.
 
 \begin{table}[h]
 \caption{Results for the real Celiac dataset. The results are averaged over 100 runs where the training step is randomly composed of 12,000 individuals. In the parentheses is reported the standard deviation of $10^5$ bootstrap samples of the mean of the corresponding variable. Results are reported with 3 significant digits.\label{tab:results-celiac}}
@@ -240,17 +241,32 @@ PLR3 & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \\
 \end{tabular}
 \end{table}
 
+\subsection{Penalized regression for the UK Biobank}
+
+We tested our implementation on 656K genotyped SNPs of the UK Biobank, keeping only caucasian individuals and removing individuals related to someone else in the data (second individual in each pair with a kinship greater than 0.08). Our L1-penalized linear regression runs in less than one day for 350K individuals, achieving a correlation of 65.5\% with true height for both sexes. The best C+T model achieves a correlation of 55\% for women and 56\% for men, where the GWAS part takes 1 hour only.
+Our L1-penalized logistic regression on breast cancer runs in only 12 minutes for 150K women, achieving an AUC of 0.587. The best C+T model achieves the same AUC score, where the GWAS part takes 15 hours.
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Discussion}
+
+\subsection{Time and memory requirements}
+
+The computation time of our PLR implementation mainly depends on the sample size and the number of active variables. Indeed, the algorithm is composed of two steps: first, for each variable, the algorithm computes one statistic that will be used to decide if the variable enters the model or not. Then, the algorithm iterates over a regularization path of decreasing values of $\lambda$, which progressively enables variables to enter the model (Figure  \ref{fig:CMSA}). So, in the second step, the number of variables is increasing progressively, and at some point the computation stops due to the early stopping criterion (prediction is getting worse on the corresponding validation set, see figure \ref{fig:CMSA}).
+
+So, for highly polygenic traits such as height and when using huge datasets such as the UK Biobank, the algorithm might iterate over dozens of thousands of variables, which takes time (but still less than one day with our implementation). On the contrary, for traits like the celiac disease or breast cancer that seems to be less polygenic, a lot less variables are entering the model and the fitting is very fast (12 minutes only for 150K women of the UK Biobank for breast cancer!). Using more cases (there were only 3542 for Celiac and 6374 for Breast Cancer), one might achieve better predictive performance for these two diseases, and the computation time should stay within a few hours.
+
+Regarding memory requirements, this is basically the same as for computation time. Indeed, active variables are accessed in memory thanks to memory-mapping when they are used \cite[]{prive2017efficient}. If there are too many variables accessed, the operating system (OS) has to make some space for new comping variables. So, there should never be any memory issue thanks to memory-mapping, yet, at some point, if there are too many active variables, the OS would regularly swap memory between disk and RAM, which is very slow. If this happens for very large datasets, you can try to use less processing cores (as active sets tend to have non-overlapping variables because of LD) or buy more RAM. We have quickly tested processing each chromosome separately and then combining the models later but this did not seem to perform as well as fitting all SNPs at once.
 
 \subsection{Joint estimation improves predictive performance}
 
 In this comparative study, we present a computationally efficient implementation of penalized logistic regression (PLR). 
 This model can be used to build polygenic risk scores based on very large individual-level SNP datasets such as the UK biobank \cite[]{bycroft2017genome}. 
 In agreement with previous work \cite[]{abraham2013performance}, we show that jointly estimating SNP effects has the potential to substantially improve predictive performance as compared to the standard C+T approach in which SNP effects are learned independently. 
-PLR always outperforms the C+T method, except in some highly underpowered cases, and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
+PLR always outperforms the C+T method, except in some highly underpowered cases (AUC values always less than 0.6), and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another (Figures \ref{fig:supp-AUC-chr6-all-r2} and \ref{fig:main-AUC-ntrain}). 
+This could be explained by the fact that PLR is too conservative in underpowered cases.
 
 \subsection{Importance of hyper-parameters}
 
@@ -258,9 +274,11 @@ The choice of hyper-parameter values is very important since it can greatly impa
 The choice of the $r^2$ threshold of the clumping step is important. 
 Indeed, on the one hand, choosing a low value for this threshold may discard informative SNPs that are correlated.
 Yet, on the other hand, when choosing a high value for this threshold, too much redundant information would be included in the model, which would add some noise to the PRS.
-Based on the simulations, we find that using a stringent threshold ($r^2 = 0.05$) leads to higher predictive performance, even when causal SNPs are correlated. It means that, in most cases, avoiding redundant information is more important than including all causal SNPs.
+Based on the simulations, we find that using a stringent threshold ($r^2 = 0.05$) leads to higher predictive performance, even when causal SNPs are correlated. It means that, in most cases tested in this paper, avoiding redundant information is more important than including all causal SNPs.
 The choice of the $p_T$ threshold is also very important as it can greatly impact the predictive performance of the C+T method, which we confirm in this study \cite[]{ware2017heterogeneity}. 
-In this paper, we reported the maximum AUC of 102 different p-value thresholds, a threshold that should normally be learned on the training set only. To our knowledge, there is no clear standard on how to choose these two critical hyper-parameters for C+T.
+In this paper, we reported the maximum AUC of 102 different p-value thresholds, a threshold that should normally be learned on the training set only. To our knowledge, there is no clear standard on how to choose these two critical hyper-parameters for C+T. 
+We did not want to choose the C+T parameters so that one could not criticize the procedure we would have used. Instead, for C+T, we chose to report the best AUC value on the test set, even if it leads to over-optimistic results for C+T as compared to PLR.
+
 
 In contrast, for the penalized logistic regression presented here, we developed an automatic procedure called Cross-Model Selection and Averaging (CMSA) that releases investigators from the burden of choosing hyper-parameter $\lambda$ that accounts for the amount of regularization used in the model. Not only this procedure provides near-optimal results, but it also accelerates the model training thanks to the development of an early stopping criterion. 
 Usually, cross-validation is used to choose hyper-parameter values and then the model is trained again with these particular hyper-parameter values \cite[]{Hastie2008,wei2013large}. Yet, performing cross-validation and retraining the model is computationally demanding; CMSA offers a less burdensome alternative. 
@@ -279,7 +297,7 @@ However, predictive performance of T-Trees are consistently lower than with pena
 
 \subsection{Limitations}
 
-Our approach has one major limitation: the main advantage of the C+T method is its direct applicability to summary statistics, allowing to leverage the largest GWAS results to date, even when individual cohort data cannot be merged because of practical or ethical reasons (e.g.\ consortium data including many cohorts). As of today, the proposed penalized logistic regression does not allow for the analysis of summary data, but this represents an important future direction of our work. 
+Our approach has one major limitation: the main advantage of the C+T method is its direct applicability to summary statistics, allowing to leverage the largest GWAS results to date, even when individual cohort data cannot be merged because of practical or ethical reasons (e.g.\ consortium data including many cohorts). As of today, our penalized logistic regression does not allow for the analysis of summary data, but this represents an important future direction of our work. 
 The current version is of particular interest for the analysis of modern individual-level datasets including hundreds of thousands of individuals. 
 
 Finally, in this comparative study, we did not consider the problem of population structure \cite[]{marquez2017multiethnic,martin2017human,vilhjalmsson2015modeling} and also did not consider non-genetic data such as environmental and clinical data \cite[]{dey2013integration,van2012integration}. 
@@ -290,7 +308,7 @@ Finally, in this comparative study, we did not consider the problem of populatio
 
 In this comparative study, we have presented a computationally efficient implementation of penalized logistic regression that can be used to predict disease status based on genotypes. Note that a similar penalized linear regression is also available in our software. Our approach solves the dramatic computational burden faced by standard implementations, thus allowing for the analysis of large-scale datasets such as the UK biobank \cite[]{bycroft2017genome}. 
 
-We also demonstrated in simulations that our implementation of penalized regressions remains highly effective over a broad range of disease architectures. It can be appropriate for predicting autoimmune diseases with a few strong effects (e.g.\ celiac disease) as well as highly polygenic traits (e.g.\ standing height).  Finally, note that these models could also be used to predict phenotypes based on other omics data since the implementation is not specific to genotype data.
+We also demonstrated in simulations and real datasets that our implementation of penalized regressions is highly effective over a broad range of disease architectures. It can be appropriate for predicting autoimmune diseases with a few strong effects (e.g.\ celiac disease) as well as highly polygenic traits (e.g.\ standing height).  Finally, note that these models could also be used to predict phenotypes based on other omics data since the implementation is not specific to genotype data.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -368,7 +386,9 @@ The authors declare no competing interests.
 \section*{Acknowledgements}
 
 Authors acknowledge LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01). Authors also acknowledge the Grenoble Alpes Data Institute that is supported by the French National Research Agency under the ``Investissements d'avenir'' program (ANR-15-IDEX-02).
+We used the UK Biobank resource (application ID 25589).
 We are also grateful to F\'elix Balazard for useful discussions about T-Trees, and to Yaohui Zeng for useful discussions about R package biglasso.
+Finally, we are grateful to the two anonymous reviewers who contributed to improving this paper.
 
 \section*{Web Resources}
 
