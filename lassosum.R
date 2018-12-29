@@ -28,10 +28,10 @@ unlink("backingfiles/celiac_test*")
 celiac$fam$affection <- y
 snp_writeBed(celiac, "backingfiles/celiac_test1.bed",
              ind.row = ind.test.split[[1]])
-celiac$fam$affection[] <- 9999      ## just to be sure that this is not used
-snp_writeBed(celiac, "backingfiles/celiac_test2.bed",
-             ind.row = ind.test.split[[2]])
-cor <- p2cor(p = pval, n = 12e3, sign = gwas$estim)
+# celiac$fam$affection[] <- 9999      ## just to be sure that this is not used
+# snp_writeBed(celiac, "backingfiles/celiac_test2.bed",
+#              ind.row = ind.test.split[[2]])
+cor <- p2cor(p = pval, n = length(ind.train), sign = gwas$estim)
 cor <- ifelse(is.na(cor), max(abs(cor), na.rm = TRUE) * sign(gwas$estim), cor)
 library(doParallel)
 registerDoParallel(cl <- makeCluster(nb_cores()))
@@ -39,16 +39,18 @@ system.time(
   out <- lassosum.pipeline(cor = cor, chr = CHR, pos = POS, A1 = A2, A2 = A1,
                            test.bfile = "backingfiles/celiac_test1",
                            LDblocks = "EUR.hg19",
-                           cluster = cl)
+                           cluster = cl,
+                           exclude.ambiguous = FALSE)
 ) # 64 sec
 stopCluster(cl)
 
 v <- validate(out, covar = U[ind.test.split[[1]], ])
-out2 <- subset(out, s = v$best.s, lambda = v$best.lambda)
-v2 <- validate(out2, covar = U[ind.test.split[[2]], ],
-               test.bfile = "backingfiles/celiac_test2")
+length(ind <- which(v$best.beta != 0))
+pred <- big_prodVec(G, -v$best.beta[ind], 
+                    ind.row = ind.test.split[[2]],  
+                    ind.col = ind)
 
-AUC(v2$best.pgs, y[ind.test.split[[2]]])  ## 83.34
+AUC(pred, y[ind.test.split[[2]]])  ## 83.2 [81.1-85.3]
 
 
 
