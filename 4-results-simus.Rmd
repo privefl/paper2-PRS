@@ -279,36 +279,20 @@ results3.summary <- results3 %>%
   summarise(AUC_mean = mean(AUC), AUC_boot = boot(AUC), N = n())
 ```
 
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+```{r}
 results3.summary %>%
   filter(method %in% c("PLR", "C+T-max"), par.model == "ADD") %>%
-  barplot_causal_one(h2 = 0.8)
+  barplot_causal_all()
 
-ggsave("figures/main-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
+ggsave("figures/main-AUC-logit.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
+```{r}
 results3.summary %>%
   filter(grepl("C\\+T", method)) %>%
-  barplot_causal_one(h2 = 0.8)
+  barplot_causal_all()
 
-ggsave("figures/main-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
-```
-
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
-results3.summary %>%
-  filter(method %in% c("PLR", "C+T-max")) %>%
-  barplot_causal_one(h2 = 0.5)
-
-ggsave("figures/supp-AUC-logit.pdf", scale = 1/90, width = 844, height = 872)
-```
-
-```{r, fig.asp = 1, out.width = "60%", fig.width=8}
-results3.summary %>%
-  filter(grepl("C\\+T", method)) %>%
-  barplot_causal_one(h2 = 0.5)
-
-ggsave("figures/supp-AUC-PRS.pdf", scale = 1/90, width = 844, height = 872)
+ggsave("figures/supp-AUC-PRS.pdf", scale = 1/110, width = 1242, height = 951)
 ```
 
 ### 6000 in training & only chromosome 6
