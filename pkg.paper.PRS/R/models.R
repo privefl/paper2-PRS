@@ -117,13 +117,15 @@ logit.CMSA <- function(G, pheno.all, covar.all, ind.train, ind.test, method,
     preds <- stats::predict(cmsa.logit, X = G, ind.row = ind.test,
                             covar.row = covar.all[ind.test, , drop = FALSE])
   })[3]
+  
+  summ_best <- summary(cmsa.logit, best.only = TRUE)
 
   tibble(
     method   = method,
     pred     = list(preds),
     timing   = timing,
-    alpha = attr(cmsa.logit, "alpha"),
-    set = list(which(rowSums(sapply(cmsa.logit, function(x) x$beta.X) != 0) > 0))
+    alpha = summ_best$alpha,
+    set = list(which(summ_best$beta[[1]] != 0))
   )
 }
 

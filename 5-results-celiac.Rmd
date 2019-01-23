@@ -130,15 +130,14 @@ system.time(
                         covar.train = obj.svd$u[ind.train, ],
                         ncores = NCORES, alphas = 1)
 )
-# Get K = 10 predictions/individuals
-preds1 <- predict(logit, X = G, ind.row = ind.test, 
+pred1 <- predict(logit, X = G, ind.row = ind.test, 
                   covar.row = obj.svd$u[ind.test, ])
-(nb.pred1 <- sum(rowSums(sapply(logit, function(l) l$beta.X != 0)) > 0))
-(aucs1 <- AUC(preds1, target = y[ind.test]))
+(nb.pred1 <- summary(logit, best.only = TRUE)$nb_var)
+(aucs1 <- AUC(pred1, target = y[ind.test]))
 ```
 
 ```{r}
-(p2 <- plot_density_AUC(preds1))
+(p2 <- plot_density_AUC(pred1))
 ```
 
 ### Logistic regression with feature engineering (PLR3)
@@ -151,14 +150,14 @@ system.time(
                          ncores = NCORES, alphas = 1)
 )
 
-preds2 <- predict(logit2, X = G2, ind.row = ind.test, 
+pred2 <- predict(logit2, X = G2, ind.row = ind.test, 
                   covar.row = obj.svd$u[ind.test, ])
-(nb.pred2 <- sum(rowSums(sapply(logit2, function(l) l$beta.X != 0)) > 0))
-(aucs2 <- AUC(preds2, target = y[ind.test]))
+(nb.pred2 <- summary(logit2, best.only = TRUE)$nb_var)
+(aucs2 <- AUC(pred2, target = y[ind.test]))
 ```
 
 ```{r}
-(p3 <- plot_density_AUC(preds2))
+(p3 <- plot_density_AUC(pred2))
 ```
 
 ```{r, out.width="70%", fig.asp=900/780}
@@ -177,8 +176,8 @@ library(plotROC)
 scores_tidy <- tibble(
   d = y[ind.test], 
   "C+T-max" = prs[, which.max(aucs)],
-  "PLR"     = preds1,
-  "PLR3"    = preds2
+  "PLR"     = pred1,
+  "PLR3"    = pred2
 ) %>%
   gather(key = "Method", value = "Score", -d)
   

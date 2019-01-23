@@ -18,7 +18,7 @@ Imports:
     magrittr,
     methods,
     Matrix,
-    bigstatsr,
+    bigstatsr (>= 0.8),
     bigsnpr,
     stats,
     stringr,
