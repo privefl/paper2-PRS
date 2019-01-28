@@ -312,6 +312,24 @@ Our L1-penalized logistic regression on breast cancer runs in only 12 minutes fo
 
 [TODO: COMPLETER + RESULTS TABLE]
 
+\begin{table}[h]
+\caption{Results for the UK Biobank. The training/test sets for Height (resp. Breast Cancer) are 350,000/24,131 (resp. 150,000/38,628). For PLR, dfmax is a parameter that controls the maximum number of variables allowed to enter the model before stopping fitting (default is 50,000 for each model corresponding to each validation set). Third row corresponds to fitting PLR on the top 100,000 SNPs from a GWAS on the training set. For Height, $r$ (correlation with true height) is reported within women / men; for Breast Cancer, AUC is reported.\label{tab:results-UKBB}}
+\vspace*{0.5em}
+\centering
+\begin{tabular}{|l|l|c|c|c|}
+  \hline
+Trait & Method & $r$ or AUC & \# predictors & Execution time \\
+  \hline
+Height & PLR (dfmax = 50e3) & 0.656 / 0.657 & 115,997 & 21h \\ 
+Height & PLR (dfmax = Inf)  & 0.657 / 0.658 & 148,341 & 61h \\ 
+Height & PLR (100K top SNPs, dfmax = Inf)  & 0.634 / 0.643 & 70,162 & 48.5h \\ 
+Height & C+T-max & 0.549 / 0.561 & 45,570 & 69m \\ 
+Breast Cancer & PLR & 0.598 & 2653 & 13m \\ 
+Breast Cancer & C+T-max & 0.589 & 21 & 15h \\
+  \hline
+\end{tabular}
+\end{table}
+
 }
 
 
