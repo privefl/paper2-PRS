@@ -1,6 +1,3 @@
-# system("pip2 install --user --upgrade pip")
-# system("pip2 install --user ldpred")
-
 library(bigsnpr)
 celiac <- snp_attach("backingfiles/celiacQC.rds")
 G <- celiac$genotypes
@@ -31,6 +28,7 @@ celiac$map %>%
   select(hg19chrc = chromosome, snpid = marker.ID,
          a1 = allele1, a2 = allele2, bp = physical.pos) %>%
   mutate(hg19chrc = paste0("chr", hg19chrc), or = exp(gwas$estim), p = pval) %>%
+  # filter(hg19chrc %in% c("chr1", "chr2")) %>%
   bigreadr::fwrite2("SUM_STATS_FILE.txt", sep = "\t")
 
 readLines("SUM_STATS_FILE.txt", n = 5)
@@ -43,22 +41,26 @@ readLines("SUM_STATS_FILE.txt", n = 5)
 unlink(paste0("backingfiles/celiac_test1", c(".bed", ".bim", ".fam")))
 snp_writeBed(celiac, "backingfiles/celiac_test1.bed", ind.row = ind.test.split[[1]])
 
+reticulate::use_python("/home/privef/anaconda3/bin/python3")
+reticulate::py_config()
+stopifnot(system("python3 --version", intern = TRUE) == "Python 3.7.0")
+ldpred <- "../ldpred/LDpred.py"
 unlink("OUT_COORD_FILE.hdf5")
 system(glue::glue(
-  "coord", 
-  " --gf=backingfiles/celiac_test1",
-  " --ssf=SUM_STATS_FILE.txt --ssf_format=BASIC",
-  " --N={length(ind.train)}",
-  " --out=OUT_COORD_FILE.hdf5"
+  "python3 {ldpred} coord", 
+  " --gf backingfiles/celiac_test1",
+  " --ssf SUM_STATS_FILE.txt --ssf-format BASIC",
+  " --N {length(ind.train)}",
+  " --out OUT_COORD_FILE.hdf5"
 ))
 
 system(glue::glue(
   "ldpred", 
-  " --coord=OUT_COORD_FILE.hdf5",
-  " --ld_radius={round(ncol(G) / 3000)}",
-  " --PS=0.01,0.001,0.0001",
-  " --N={length(ind.train)}",
-  " --out=OUT_COORD_FILE"
+  " --coord OUT_COORD_FILE.hdf5",
+  " --ld_radius {round(ncol(G) / 3000)}",
+  " --PS 0.01,0.001,0.0001",
+  " --N {length(ind.train)}",
+  " --out OUT_COORD_FILE"
 ))
 
 res <- bigreadr::fread2("OUT_COORD_FILE.txt_LDpred_p1.0000e-04.txt")
