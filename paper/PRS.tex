@@ -102,7 +102,7 @@ Moreover, using 150,000 individuals of the UK Biobank, we are able to predict br
 This demonstrates the feasibility and relevance of using penalized regression for PRS computation when large individual-level datasets are available.
 }
 
-In conclusion, our study demonstrates that penalized regression can achieve much more discriminative polygenic risk scores, while being applicable to large-scale individual-level data thanks to the implementation we provide in R package bigstatsr.
+In conclusion, our study demonstrates that penalized regression can achieve much more predictive polygenic risk scores, while being applicable to large-scale individual-level data thanks to the implementation we provide in R package bigstatsr.
 }
 
 
@@ -307,25 +307,26 @@ PLR3 & 0.891 (0.000628) & 0.0426 (0.000219) & 2260 (56.1) & 296 (2.03) \\
 {\color{red}
 \subsection{Penalized regression for the UK Biobank}
 
-We tested our implementation on 656K genotyped SNPs of the UK Biobank, keeping only caucasian individuals and removing individuals related to someone else in the data (excluding the second individual in each pair with a kinship greater than 0.08). Our L1-penalized linear regression runs in less than one day for 350K individuals, achieving a correlation of 65.5\% with true height for both sexes. The best C+T model achieves a correlation of 55\% for women and 56\% for men, where the GWAS part takes 1 hour only.
-Our L1-penalized logistic regression on breast cancer runs in only 12 minutes for 150K women, achieving an AUC of 0.587. The best C+T model achieves the same AUC score, where the GWAS part takes 15 hours.
+We tested our implementation on 656K genotyped SNPs of the UK Biobank, keeping only caucasian individuals and removing individuals related to someone else in the data (excluding the second individual in each pair with a kinship greater than 0.08). Results are presented in table \ref{tab:results-UKBB}.
 
-[TODO: COMPLETER + RESULTS TABLE]
+Our L1-penalized linear regression runs in less than one day for 350K individuals, achieving a correlation of more than 65.5\% with true height for both sexes. The best C+T model achieves a correlation of 55\% for women and 56\% for men, where the GWAS part takes 1 hour only. 
+If using only the top 100,000 SNPs from a GWAS on the training set to train our L1-PLR, correlation between predicted and true heights drops at 0.634 for women and 0.643 for men.
+Our L1-penalized logistic regression on breast cancer runs in only 13 minutes for 150K women, achieving an AUC of 0.598. The best C+T model achieves an AUC of 0.589, where the GWAS part takes 15 hours.
 
 \begin{table}[h]
-\caption{Results for the UK Biobank. The training/test sets for Height (resp. Breast Cancer) are 350,000/24,131 (resp. 150,000/38,628). For PLR, dfmax is a parameter that controls the maximum number of variables allowed to enter the model before stopping fitting (default is 50,000 for each model corresponding to each validation set). Third row corresponds to fitting PLR on the top 100,000 SNPs from a GWAS on the training set. For Height, $r$ (correlation with true height) is reported within women / men; for Breast Cancer, AUC is reported.\label{tab:results-UKBB}}
+\caption{Results for the UK Biobank. The training/test sets for height (resp. breast cancer) are 350,000/24,131 (resp. 150,000/38,628). For PLR, dfmax is a parameter that controls the maximum number of variables allowed to enter the model before stopping fitting (default is 50,000 for each model corresponding to each validation set). Third row corresponds to fitting PLR on the top 100,000 SNPs from a GWAS on the training set. For height, $r$ (correlation with true height) is reported within women / men; for breast cancer, AUC is reported.\label{tab:results-UKBB}}
 \vspace*{0.5em}
 \centering
 \begin{tabular}{|l|l|c|c|c|}
   \hline
 Trait & Method & $r$ or AUC & \# predictors & Execution time \\
   \hline
-Height & PLR (dfmax = 50e3) & 0.656 / 0.657 & 115,997 & 21h \\ 
-Height & PLR (dfmax = Inf)  & 0.657 / 0.658 & 148,341 & 61h \\ 
-Height & PLR (100K top SNPs, dfmax = Inf)  & 0.634 / 0.643 & 70,162 & 48.5h \\ 
-Height & C+T-max & 0.549 / 0.561 & 45,570 & 69m \\ 
-Breast Cancer & PLR & 0.598 & 2653 & 13m \\ 
-Breast Cancer & C+T-max & 0.589 & 21 & 15h \\
+height & PLR (dfmax = 50e3) & 0.656 / 0.657 & 115,997 & 21h \\ 
+height & PLR (dfmax = Inf)  & 0.657 / 0.658 & 148,341 & 61h \\ 
+height & PLR (100K top SNPs, dfmax = Inf)  & 0.634 / 0.643 & 70,162 & 48.5h \\ 
+height & C+T-max & 0.549 / 0.561 & 45,570 & 69m \\ 
+breast cancer & PLR & 0.598 & 2653 & 13m \\ 
+breast cancer & C+T-max & 0.589 & 21 & 15h \\
   \hline
 \end{tabular}
 \end{table}
@@ -340,16 +341,18 @@ Breast Cancer & C+T-max & 0.589 & 21 & 15h \\
 {\color{red}
 \subsection{Time and memory requirements}
 
-The computation time of our PLR implementation mainly depends on the sample size and the number of active variables. Indeed, the algorithm is composed of two steps: first, for each variable, the algorithm computes one statistic that will be used to decide if the variable enters the model or not (for each value of $\lambda$). Then, the algorithm iterates over a regularization path of decreasing values of $\lambda$, which progressively enables variables to enter the model (Figure  \ref{fig:CMSA}). So, in the second step, the number of variables is increasing progressively, and at some point the computation stops due to the early stopping criterion (when prediction is getting worse on the corresponding validation set, see figure \ref{fig:CMSA}).
+The computation time of our PLR implementation mainly depends on the sample size and the number of active variables. Indeed, the algorithm is composed of two steps: first, for each variable, the algorithm computes one statistic that will be used to decide if the variable enters the model or not (for each value of $\lambda$). This first step should be very fast.
+Then, the algorithm iterates over a regularization path of decreasing values of $\lambda$, which progressively enables variables to enter the model (Figure  \ref{fig:CMSA}). So, in the second step, the number of variables is increasing progressively, and at some point the computation stops due to the early stopping criterion (when prediction is getting worse on the corresponding validation set, see figure \ref{fig:CMSA}).
 
-So, for highly polygenic traits such as height and when using huge datasets such as the UK Biobank, the algorithm might iterate over dozens of thousands of variables, which takes time (but still less than one day with our implementation). On the contrary, for traits like the celiac disease or breast cancer that seems to be less polygenic, a lot less variables are entering the model and the fitting is very fast (12 minutes only for 150K women of the UK Biobank for breast cancer!). Using more cases (there were only 3542 for Celiac and 6374 for Breast Cancer), one might achieve better predictive performance for these two diseases, and the computation time should remain within a few hours.
+So, for highly polygenic traits such as height and when using huge datasets such as the UK Biobank, the algorithm might iterate over more than 100,000 variables, which takes time. On the contrary, for traits like the celiac disease or breast cancer that seems to be less polygenic, a lot less variables are entering the model and the fitting is very fast (13 minutes only for 150K women of the UK Biobank for breast cancer!). Using more cases (there were only 3542 for Celiac and 6768 for breast cancer), one might achieve better predictive performance for these two diseases, and the computation time should remain within a few hours.
 
 Regarding memory requirements, this is basically the same as for computation time. Indeed, active variables are accessed in memory thanks to memory-mapping when they are used \cite[]{prive2017efficient}. 
 If there are too many variables accessed, the operating system (OS) has to make some space for new coming variables. 
 There should never be any memory issue thanks to memory-mapping. Yet, at some point, if there are too many active variables, the OS would regularly swap memory between disk and RAM, which is very slow. 
 If this happens for very large datasets, you can try to use less processing cores (as active sets tend to have non-overlapping variables because of LD) or buy more RAM. 
+Another solution would be to reduce the `n.abort' parameter (default value is 10) in order to stop fitting the regularization path even sooner. This would avoid fitting models with a large number of variables without changing the solution since regularization paths for very large sample sizes are very smooth (Figure \ref{fig:supp-path}).
 We have quickly tested processing each chromosome separately and then combining the models later but this did not perform as well as fitting all SNPs at once (data not shown). 
-Another widely used approach is to apply the penalized regression on a subset of SNPs using univariate tests (GWAS) to prioritize SNPs. Yet, this strategy was shown to reduce predictive power \cite[]{abraham2013performance,accuheight2018}, which we also confirm here by achieving a correlation of 65.5\% for height using 350K individuals of the UK Biobank, whereas \cite{accuheight2018} achieved only 61\% for the same sample size when using only the 50K most significantly associated SNPs [TODO: COMPARER PLUTOT A MOI DIRECTEMENT].
+Another widely used approach is to apply the penalized regression on a subset of SNPs by prioritizing SNPs using univariate tests (GWAS computed from the same dataset). Yet, this strategy was shown to reduce predictive power \cite[]{abraham2013performance,accuheight2018}, which we also confirm in this paper. Indeed, when using only the 100K most significantly associated SNPs, this reduces correlation between predicted and true heights from 0.657/0.658 to 0.634/0.643 within women/men, while decreasing computation time by 20\% only (Table \ref{tab:results-UKBB}).
 
 }
 
@@ -362,7 +365,7 @@ In agreement with previous work \cite[]{abraham2013performance}, we show that jo
 PLR always outperforms the C+T method, except in some highly underpowered cases (AUC values always less than 0.6), and the benefits of using PLR are more pronounced with an increasing sample size or when causal SNPs are correlated with one another.
 
 When there are many effects of small size and a small sample size, PLR performs worse than (the best result for) C+T. This may be because PLR is too conservative in including effects, whereas it has been shown in the literature that, in such underpowered scenarios, including (nearly) all SNPs was the best strategy \cite[]{purcell2009common}.
-In scenario \textnumero3, by varying sample size, we show that when increasing sample size, PLR achieves higher predictive performance than C+T at some point and that the benefits of using PLR over C+T increase with an increasing sample size (Figure \ref{fig:main-AUC-ntrain}). Moreover, in scenario \textnumero2, we decrease the search space (p: number of SNPs) in order to increase the polygenicity of the models and to virtually increase the sample size \cite[]{dudbridge2013power}. In this scenario, even when there are small effects and a high polygenicity (3000 causal variants out of 18,941), PLR gets a large increase in predictive performance, now consistently higher than C+T (Figure \ref{fig:supp-AUC-all-r2}).
+In scenario \textnumero3, by varying sample size, we show that when increasing sample size, PLR achieves higher predictive performance than C+T at some point and that the benefits of using PLR over C+T increase with an increasing sample size (Figure \ref{fig:main-AUC-ntrain}). Moreover, in scenario \textnumero2, we decrease the search space (p: number of SNPs) in order to increase the polygenicity of the models and to virtually increase the sample size \cite[]{dudbridge2013power}. In this scenario \textnumero2, even when there are small effects and a high polygenicity (3000 causal variants out of 18,941), PLR gets a large increase in predictive performance, now consistently higher than C+T (Figure \ref{fig:supp-AUC-all-r2}).
 }
 
 \subsection{Importance of hyper-parameters}
