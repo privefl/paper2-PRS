@@ -1,4 +1,6 @@
 SUM_STATS_FILE.txt
+OUT_COORD_FILE.hdf5
+reprex.*
 BOLT-LMM_v2.3.2
 backingfiles
 discovery
