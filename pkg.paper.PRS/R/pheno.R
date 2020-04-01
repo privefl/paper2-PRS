@@ -1,5 +1,10 @@
 ################################################################################
 
+scaled_prod <- function(X, beta, ind.col) {
+  ms <- big_scale()(X, rows_along(X), ind.col)
+  big_prodVec(X, beta, ind.col = ind.col, center = ms$center, scale = ms$scale)
+}
+
 #' Simulate phenotypes
 #'
 #' @param G Matrix of genotypes.
@@ -19,6 +24,8 @@
 #'   - "effects": Size of effects corresponding to `set`.
 #' @export
 #' @importFrom stats qnorm rnorm sd var
+#'
+#' @import bigstatsr
 #'
 get_pheno <- function(
   G,                                        ## matrix of genotypes
@@ -40,15 +47,16 @@ get_pheno <- function(
 
   if (model == "simple") {
     # only linear
-    y.simu <- scale(G[, set]) %*% effects
+    y.simu <- scaled_prod(G, effects, set)
   } else {
     sets <- split(1:M, sample(rep_len(1:3, M)))
     # linear
     ind1 <- sets[[1]]
-    y.simu <- scale(G[, set[ind1]]) %*% effects[ind1]
+    y.simu <- scaled_prod(G, effects[ind1], set[ind1])
     # recessive / dominant
     ind2 <- sets[[2]]
-    y.simu <- y.simu + scale(G[, set[ind2]] > 0.5) %*% effects[ind2]
+    y.simu <- y.simu + scaled_prod(G$copy(code = (G$code256 > 0.5)),
+                                   effects[ind2], set[ind2])
     # interactions
     ind3 <- matrix(sets[[3]], ncol = 2)
     y.simu <- y.simu + scale(G[, set[ind3[, 1]]] * G[, set[ind3[, 2]]]) %*%
