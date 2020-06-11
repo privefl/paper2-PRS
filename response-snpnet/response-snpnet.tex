@@ -64,7 +64,7 @@
 \begin{document}
 
 
-\title{Clarifications on using snpnet and bigstatsr for fitting penalized regressions in very large datasets}
+\title{Clarifications on using snpnet and bigstatsr\\ for fitting penalized regressions in very large datasets}
 \author{Florian Priv\'e,$^{\text{1,}*}$ Bjarni J. Vilhj\'almsson$^{\text{1,2}}$ and Hugues Aschard$^{\text{3}}$}
 
 \date{~ }
@@ -112,7 +112,7 @@ We also make more appropriate recommendations on how to fit penalized regression
 Before we can present the main motivation behind snpnet developed by \cite{qian2020fast}, let us recall how the lasso regression is fitted.
 Finally, for penalized logistic regression (PLR), we find regression coefficients $\beta_0$ and $\beta$ that minimize the following regularized loss function 
 \begin{equation}
-L(\lambda) = \underbrace{ \sum_{i=1}^n \left( y_i - \beta_0 - \sum_{j=1}^p X_{i,j} \beta_j \right)^2 }_\text{Loss function}   +   \underbrace{ \sum_{j=1}^p \lambda |\beta_j| }_\text{Penalization} ~,
+L(\lambda) = \underbrace{ \sum_{i=1}^n \left( y_i - \beta_0 - \sum_{j=1}^p X_{i,j} \beta_j \right)^2 }_\text{Loss function}   +   \underbrace{ \sum_{j=1}^p \lambda |\beta_j| }_\text{Penalization} ~,\label{eq:lasso}
 \end{equation}
 where $X$ is denoting the matrix composed of $p$ genotypes and possible covariates (e.g.\ sex, age and principal components) for $n$ individuals, $y$ is the (continuous) trait to predict, $\lambda$ ($> 0$) is a regularization hyper-parameter that control the strength of the penalty.
 For a sequence of $\lambda$, we can find $\argmin_{\beta} L(\lambda)$ using cyclical coordinate descent\cite[]{friedman2010regularization}.
@@ -140,14 +140,73 @@ Please refer to the Discussion section of \cite{prive2019efficient} for more det
 To sum up, bigstatsr effectively does less passes on the whole dataset (only one) as compared to snpnet that often does 20 passes or even more.
 Moreover, there is a single pass done even when performing cross-validation (CV) internally, while perfoming CV with snpnet would multiply the number of folds used (see next section).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Discussion}
+[TALK ABOUT THAT BASIL DOES NOT REALLY DECREASE THE NUMBER OF ITERATIONS FOR HEIGHT?]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Methods}
+\section*{Missing cross-validation?}
 
+In their paper, \cite{qian2020fast} divide the individuals that they use in 60\% for training, 20\% for validation (i.e.\ choosing the best-performing $\lambda$) and 20\% for testing the resulting model.
+This is effectively using only 75\% of the data that could be used for training.
+Moreover, in the snpnet package, they do not seem to provide any framework for performing cross-validation (CV), as opposed to in R package glmnet.
+CV is an inevitable step to fit models with hyper-parameters such as the lasso.
+In functions \texttt{big\_spLinReg} and \texttt{big\_spLogReg} of R package bigstatsr, we therefore decided to directly perform a link of cross-validation internally \cite[]{prive2019efficient}.
+We divide the training set in $K$ (e.g.\ $10$) sets, which are in turn used as validation set while the others ($K - 1$) sets are used as training set.
+Instead of choosing the best performing hyper-parameters and refitting the models using the whole training set, we average the $K$ models because we find it more appropriate and faster, and call this procedure Cross-Model Selection and Averaging (CMSA).
+Using CMSA, we are effectively using 100\% of the training set, therefore we expect prediction to be better when using bigstatsr. 
+Moreover, because we are using memory-mapping in R package bigstatsr, the data is shared across processes and therefore we can process these folds in parallel without using any extra memory.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Recommendations}
+
+First, in their UK Biobank applications, \cite{qian2020fast} have tried using elastic-net regularization instead of lasso regression by introducing a new hyper-parameter $\alpha$ ($0 < \alpha \le 1$, with the special case of $\alpha = 1$ being the lasso regularization). 
+They show that lasso regularization is very effective in very large (effective) sample sizes, and elastic-net regularization ($\alpha < 1$) might not be needed in this case, which we have also experienced.
+Yet, in smaller sample sizes and for very polygenic architectures, we showed through extensive simulations that using lower values for $\alpha$ can significantly improve predictive performance \cite[]{prive2019efficient}.
+In \cite{qian2020fast}, they tried $\alpha \in \{0.1, 0.5, 0.9, 1\}$; we recommend to use a grid on the log-scale with smaller values (e.g.\ $1$, $0.1$, $0.01$, $0.001$, and even until $0.0001$).
+Note that the smaller is $\alpha$, the larger is the number of non-zero variables and therefore the larger are the time and memory taken by the algorithm.
+In functions \texttt{big\_spLinReg} and \texttt{big\_spLogReg} of R package bigstatsr, we allow to directly test many $\alpha$ values in parallel within the CMSA procedure.
+
+Second, for large datasets, one should always use early-stopping.
+Indeed, while fitting the regularization path of $\lambda$ values on the training set, one can monitor the predictive ability on the validation step, and stop early in the regularization path when the model starts to overfit the training data and become worse on the validation set (Figure \ref{fig:CMSA}). 
+For large data and therefore large validation sets, performances on the validation sets are very smooth and then one can safely stop very early, e.g.\ after the second iteration where prediction becomes worse in the validation set.
+This corresponds to setting \texttt{n.abort = 2} in bigstatsr and \texttt{stopping.lag = 2} in snpnet.
+This is particularly useful as when we move down the regularization path of $\lambda$ values, more and more variables are entering the model and the cyclical coordinate descent takes more and more time to perform.
+
+\begin{figure}[h]
+	\centerline{\includegraphics[width=0.85\textwidth]{simple-CMSA}}
+	\caption{Illustration of one turn of the Cross-Model Selection and Averaging (CMSA) procedure (figure from \cite{prive2019efficient}). First, this procedure separates the training set in $K$ folds (e.g.\ 10 folds). 
+		Secondly, in turn, each fold is considered as an inner validation set (red) and the other ($K - 1$) folds form an inner training set (blue). A ``regularization path'' of models is trained on the inner training set and the corresponding predictions (scores) for the inner validation set are computed. The model that minimizes the loss on the inner validation set is selected. Finally, the $K$ resulting models are averaged. 
+		We also use this procedure to derive an early stopping criterion so that the algorithm does not need to evaluate the whole regularization paths, making this procedure much faster.}
+	\label{fig:CMSA}
+\end{figure}
+
+Third, \cite{qian2020fast} recommend to not scale genotype data to fit lasso. This is both true and false. 
+Scaling genotypes is assuming that all variants explain the same amount of variance on average, which is the assumptions behind models in software such as GCTA and LDSC [CITE].
+It also means that low-frequency variants would get larger effects on average.
+[CITE DOUG] argued that this assumption might not be reasonable and proposed another model [TODO].
+In [CITE] they estimated [BLABLA] to be between $-0.25$ and $-0.5$ for most traits.
+Note that scaling genotypes by dividing genotypes by their standard deviations as done by default in bigstatsr would correspond to using $-1$ while not doing any scaling as argued by \cite{qian2020fast} would correspond to using $0$.
+Therefore, a tradeoff between these two approaches provides higher predictive performance and is therefore recommended (Manuscript in preparation).
+For example, in the case of lasso regularization, using a different scaling can be obtained by using a different penalty for all variants, replacing $\lambda$ by different $\lambda_j$ in equation \eqref{eq:lasso}.
+This option is available in both bigstatsr and snpnet.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{From theory to practice}
+
+In previous sections, we have explained theoritically why snpnet could not be faster than bigstatsr nor provide higher predictive performance.
+In this section, we perform comparisons for 4 traits in the UK Biobank to practically support our claims.
+
+[TODO: SHOWING PREDICTION FOR BOTH THE SAME FOLD AND CMSA + TIMING]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Conclusion}
+
+[THEY CHOSE THE CLEVER APPROACH, WE CHOSE THE PRACTICAL ONE]
+
+[DISCUSS ABOUT FLEXIBILITY OF THE PACKAGES]
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
