@@ -1,0 +1,189 @@
+%% LyX 1.3 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english, 12pt]{article}
+\usepackage{times}
+%\usepackage{algorithm2e}
+\usepackage{url}
+\usepackage{bbm}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,letterpaper,tmargin=2cm,bmargin=2cm,lmargin=1.5cm,rmargin=1.5cm}
+\usepackage{rotating}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{setspace}
+\usepackage{lineno}
+\usepackage{hyperref}
+\usepackage{bbm}
+\usepackage{makecell}
+
+%\renewcommand{\arraystretch}{1.8}
+
+%\usepackage{xr}
+%\externaldocument{paper-ldpred2-supp}
+
+%\linenumbers
+%\doublespacing
+\onehalfspacing
+%\usepackage[authoryear]{natbib}
+\usepackage{natbib} \bibpunct{(}{)}{;}{author-year}{}{,}
+
+%Pour les rajouts
+\usepackage{color}
+\definecolor{trustcolor}{rgb}{0,0,1}
+
+\usepackage{dsfont}
+\usepackage[warn]{textcomp}
+\usepackage{adjustbox}
+\usepackage{multirow}
+\usepackage{graphicx}
+\graphicspath{{../figures/}}
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+\usepackage{algorithm} 
+\usepackage{algpseudocode} 
+
+\let\tabbeg\tabular
+\let\tabend\endtabular
+\renewenvironment{tabular}{\begin{adjustbox}{max width=0.9\textwidth}\tabbeg}{\tabend\end{adjustbox}}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Bold symbol macro for standard LaTeX users
+%\newcommand{\boldsymbol}[1]{\mbox{\boldmath $#1$}}
+
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+\usepackage{babel}
+\makeatother
+
+
+\begin{document}
+
+
+\title{Clarifications on using snpnet and bigstatsr for fitting penalized regressions in very large datasets}
+\author{Florian Priv\'e,$^{\text{1,}*}$ Bjarni J. Vilhj\'almsson$^{\text{1,2}}$ and Hugues Aschard$^{\text{3}}$}
+
+\date{~ }
+\maketitle
+
+\noindent$^{\text{\sf 1}}$National Centre for Register-Based Research, Aarhus University, Aarhus, 8210, Denmark. \\
+\noindent$^{\text{\sf 2}}$Bioinformatics Research Centre, Aarhus University, Aarhus, 8000, Denmark. \\
+\noindent$^{\text{\sf 3}}$Centre de Bioinformatique, Biostatistique et Biologie Int\'egrative (C3BI), Institut Pasteur, Paris, 75015, France. \\
+\noindent$^\ast$To whom correspondence should be addressed.\\
+
+\noindent Contact:
+\begin{itemize}
+\item \url{florian.prive.21@gmail.com}
+\end{itemize}
+
+\vspace*{4em}
+
+\abstract{	
+
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+
+\section*{Introduction}
+
+Penalized regressions such as regression using a lasso penalty has been widely used, as it proved to be a [ ] method for both variable selection and model fitting at the same time \cite[]{tibshirani1996regression}.
+R package glmnet is a popular software to fit the lasso efficiently \cite[]{friedman2010regularization}.
+However, glmnet cannot handle very large datasets such as biobank-scale data that are now available in human genetics, where both the sample size and the number of variables are very large.
+One strategy used to run penalized regressions on such large datasets such as the UK Biobank \cite[]{bycroft2018uk} has been to apply a variable pre-selection step before fitting the lasso \cite[]{lello2018accurate}.
+Very recently, authors of the glmnet package have developed a new R package, snpnet, to fit penalized regression on the UK Biobank \cite[]{qian2020fast}.
+Before that, we have developed two R packages for efficiently analyzing large-scale data, namely bigstatsr and bigsnpr \cite[]{prive2018efficient}.
+We then specifically implemented some highly efficient implementation of penalized regression in R package bigstatsr and showed how this would be useful for genetic prediction with some applications to the UK Biobank \cite[]{prive2019efficient}.
+Here, we would like to come back to some statements made in \cite[]{qian2020fast} which we do not find to be always exact.
+We reinvestigate the similarities and differences between snpnet and bigstatsr/bigsnpr through some further comparisions and explanations.
+We also make more appropriate recommendations on how to fit penalized regressions in the context of genetic data.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Main motivation for snpnet}
+
+Before we can present the main motivation behind snpnet developed by \cite{qian2020fast}, let us recall how the lasso regression is fitted.
+Finally, for penalized logistic regression (PLR), we find regression coefficients $\beta_0$ and $\beta$ that minimize the following regularized loss function 
+\begin{equation}
+L(\lambda) = \underbrace{ \sum_{i=1}^n \left( y_i - \beta_0 - \sum_{j=1}^p X_{i,j} \beta_j \right)^2 }_\text{Loss function}   +   \underbrace{ \sum_{j=1}^p \lambda |\beta_j| }_\text{Penalization} ~,
+\end{equation}
+where $X$ is denoting the matrix composed of $p$ genotypes and possible covariates (e.g.\ sex, age and principal components) for $n$ individuals, $y$ is the (continuous) trait to predict, $\lambda$ ($> 0$) is a regularization hyper-parameter that control the strength of the penalty.
+For a sequence of $\lambda$, we can find $\argmin_{\beta} L(\lambda)$ using cyclical coordinate descent\cite[]{friedman2010regularization}.
+To speed up the coordinate descent, we can use sequential strong rules for discarding lots of variables (i.e.\ setting lots of $\beta_j$ to $0$) a priori \cite[]{tibshirani2012strong}.
+The main drawback of these rules for discarding variants that will not enter the model is that they require a post-phase of checking Karush-Kuhn-Tucker (KKT) conditions.
+These conditions are first checked in the ever-active set (set of all variables $j$ with $\beta_j \neq 0$ for any previous $\lambda$). 
+Then, the cyclical coordinate descent has to be rerun while adding the new variables that do not satisfy these KKT conditions.
+This can happen from time to time
+Finally, you have to also check the KKT conditions for all variables in the data.
+This last step can be very time consuming for large datasets because it requires to pass over the whole dataset once again.
+If the available memory is not large enough to fit the whole dataset, then it means accessing data directly from disk, which is very slow. 
+
+\cite{qian2020fast} have developed a clever approach called batch screening iterative lasso (BASIL) to be able to check these KKT conditions only after having fitted solutions for many $\lambda$, instead of performing this operation for each $\lambda$.
+As an example, it can take one hour just to access a large dataset from disk; if you have to do this for 100 different $\lambda$ values, it therefore takes at least 100 hours; but it you can do this only every 5 values of $\lambda$, then it would take only 20 hours instead.
+Hence, the BASIL procedure enables to fit the exact lasso solution at a lower computation time for very large datasets.
+As bigstatsr is not using this procedure, \cite{qian2020fast} assume that fitting penalized regression with R package bigstatsr should be very slow for large datasets.
+We indeed check the KKT conditions for the ever-active set. This set is assumed to be composed of a subset of the total number of variables only, and therefore this is step is fast.
+Indeed, what is slow is to test the KKT conditions for the remaining variables. As stated in \cite{tibshirani2012strong} and \cite{qian2020fast}, when $p > n$, KKT conditions for the remaining variables almost always hold. 
+Therefore we decided to skip this step when designing functions \texttt{big\_spLinReg} and \texttt{big\_spLogReg} in R package bigstatsr two years ago.
+Therefore, these functions effectively access all variables only once at the beginning to compute the statistics used for the strong rules, and then access only a subset of variables (the ever-active set).
+As bigstatsr is using memory-mapping, data that resides on disk is accessed only once from disk to memory and then stays in memory while there is no need to free some memory.
+Only when the ever-active set becomes large, e.g.\ for very polygenic traits, memory can become an issue, but this extreme case would become a problem for snpnet as well.
+Please refer to the Discussion section of \cite{prive2019efficient} for more details on these matters.
+
+To sum up, bigstatsr effectively does less passes on the whole dataset (only one) as compared to snpnet that often does 20 passes or even more.
+Moreover, there is a single pass done even when performing cross-validation (CV) internally, while perfoming CV with snpnet would multiply the number of folds used (see next section).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Discussion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Methods}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+%\vspace*{5em}
+
+\section*{Software and code availability}
+
+[TODO: EXPORT CODE FROM CLUSTER] 
+
+%All code used for this paper is available at \url{https://github.com/privefl/paper-ldpred2/tree/master/code}.
+%The newest version of R package bigsnpr can be installed from GitHub (see \url{https://github.com/privefl/bigsnpr}).
+%A tutorial on the steps to run LDpred2 using some small example data is available at \url{https://privefl.github.io/bigsnpr/articles/LDpred2.html}. 
+
+\section*{Acknowledgements}
+
+This research has been conducted using the UK Biobank Resource under Application Number 41181.
+Authors would also like to thank GenomeDK and Aarhus University for providing computational resources and support that contributed to these research results.
+
+\section*{Funding}
+
+F.P. and B.V.\ are supported by the Danish National Research Foundation (Niels Bohr Professorship to Prof. John McGrath), and also acknowledge the Lundbeck Foundation Initiative for Integrative Psychiatric Research, iPSYCH (R248-2017-2003).
+
+\section*{Declaration of Interests}
+
+The authors declare no competing interests.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\clearpage
+
+\bibliographystyle{natbib}
+\bibliography{refs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}
