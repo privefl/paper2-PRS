@@ -220,10 +220,10 @@ However, using scaled genotypes is common practice in genetics, and is the assum
 Scaling genotypes assumes that, on average, all variants explain the same amount of variance and that low-frequency variants have larger effects.
 \cite{speed2012improved} argued that this assumption might not be reasonable and proposed another model: $\mathbb{E}[h^2_j] \propto \left[p_j (1 - p_j)\right]^\nu$, where $h^2_j$ is the variance explained by variant $j$ and $p_j$ is its allele frequency. %Note that $\nu$ is usually termed $\alpha$ but we change the notation here to avoid confusion with the hyper-parameter $\alpha$ from elastic-net regularization.
 In \cite{speed2017reevaluation}, they estimated $\nu$ to be between $-0.25$ and $-0.5$ for most traits.
-Note that scaling genotypes by dividing them by their standard deviations as done by default in bigstatsr would correspond to using $\nu=-1$ while not doing any scaling as argued by \cite{qian2020fast} would correspond to using $\nu=0$.
+Note that scaling genotypes by dividing them by their standard deviations $\text{SD}_j$ as done by default in bigstatsr would correspond to using $\nu=-1$ while not doing any scaling as argued by \cite{qian2020fast} would correspond to using $\nu=0$.
 Therefore, using a trade-off between these two approaches can provide higher predictive performance and is therefore recommended \cite[]{zhang2020improved}.
-In the case of lasso regularization, using a different scaling can be obtained by using a different penalty for all variants, introducing a different penalty factor $\lambda_j$ for different variable $j$ in equation \eqref{eq:lasso}.
-Using $\lambda_j=\left[p_j (1 - p_j)\right]^{-1}$ allows to effectively use unscaled genotypes; using different penalty factors is an option available in both bigstatsr and snpnet.
+In the case of L1 regularization, using a different scaling can be obtained by using different penalty factors $\lambda_j$ in equation \eqref{eq:lasso}, which is an option available in both bigstatsr and snpnet.
+For example, using $\lambda_j=1/\text{SD}_j$ allows to effectively use unscaled genotypes.
 Recently, we have implemented a new parameter \texttt{power\_scale} to allow for different scalings when fitting the lasso in bigstatsr. Note that a vector of values to test can be provided, and the best-performing scaling is automatically chosen within the CMSA procedure.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
