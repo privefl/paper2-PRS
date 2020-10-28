@@ -85,7 +85,9 @@
 \vspace*{4em}
 
 \abstract{	
-
+Both R packages snpnet and bigstatsr allow for fitting penalized regressions on individual-level genetic data as large as the UK Biobank.
+Here, we come back to some statements made by the authors of snpnet, and benchmark bigstatsr against snpnet for fitting penalized regressions on large genetic data.
+We find bigstatsr to be an order of magnitude faster than snpnet when applied to the UK Biobank data (from 4.5x to 35x). We also discuss the similarities and differences between the two packages, provide theoretical insights, and provide general recommendations on how to fit penalized regressions in the context of genetic data.
 }
 
 
@@ -105,7 +107,6 @@ In a second publication, we then specifically derived a highly efficient impleme
 Here, we would like to come back to some statements made in \cite[]{qian2020fast} and benchmark bigstatsr against snpnet for fitting penalized regressions on large genetic data.
 We re-investigate the similarities and differences between the penalized regression implementations of packages snpnet and bigstatsr.
 Through some theoretical expectations and empirical comparisons, we show that package bigstatsr is generally much faster than snpnet, as opposed to what is presented in \cite{qian2020fast}.
-We also show that bigstatsr can provide models with better predictive performance than snpnet.
 We also make more recommendations on how to fit penalized regressions in the context of genetic data.
 
 
@@ -125,7 +126,7 @@ Therefore the cyclical coordinate descent used to solve the lasso can be perform
 However, the main drawback of these strong rules is that they require checking Karush-Kuhn-Tucker (KKT) conditions a posteriori, usually in two phases.
 These KKT conditions are first checked in the ever-active set, i.e.\ the set of all variables $j$ with $\beta_j \neq 0$ for any previous $\lambda$.
 Then, the cyclical coordinate descent has to be rerun while adding the new variables that do not satisfy these KKT conditions (if any).
-In a second phase, the KKT conditions are also checked for all the remaining variables in the data.
+In a second phase, the KKT conditions are also checked for all the remaining variables, i.e.\ the ones not in the ever-active set.
 This last step requires to pass over the whole dataset at least once again for every $\lambda$ tested.
 Then, when the available random access memory (RAM) is not large enough to cache the whole dataset, data has to be read from disk, which can be extremely time consuming.
 
@@ -149,22 +150,26 @@ Moreover, bigstatsr still uses a single pass even when performing CMSA (a varian
 
 In the previous section, we discussed why we expect bigstatsr to be more efficient than snpnet.
 To practically support our claims, we perform comparisons for the 4 real traits used in the UK Biobank analyses of \cite{qian2020fast}.
-We use similar quality controls as done in \cite{qian2020fast}; 337,475 ``White British'' individuals and 504,139 genetic variants remain.
+We use similar quality controls as \cite{qian2020fast}; 337,475 ``White British'' individuals and 504,139 genotyped variants remain.
 We also use the same splitting strategy: 20\% test, 20\% validation and 60\% training.
-To use the same sets for bigstatsr as for snpnet, we use the same test set, use K=4 folds for training, and make sure one of them is composed of the same 20\% of the data used for validation in snpnet. 
-Moreover, we use penalty factors to effectively use unscaled genotyped in bigstatsr (see next section Recommendations), as performed by default in snpnet.
+To use the same sets for bigstatsr as for snpnet, we use the same test set, use K=4 folds for training with bigstatsr while making sure one of them is composed of the same 20\% of the data used for validation in snpnet. 
+Moreover, we use penalty factors to effectively use unscaled genotypes in bigstatsr (see next section Recommendations), as performed by default in snpnet.
 This enables us to compare predictions from snpnet and bigstatsr using the exact same model and the same single validation fold.
-Note that, to make the most of the training set, bigstatsr uses CMSA (Figure \ref{fig:CMSA}) while \cite{qian2020fast} propose to refit the model using the best $\lambda$ identified using one validation fold in snpnet.
+Note that, to make the most of the training set, bigstatsr uses CMSA (Figure \ref{fig:CMSA}) while \cite{qian2020fast} propose to refit the model (on the whole training + validation) using the best $\lambda$ identified using the validation set in snpnet.
 Also note that the parallelism used by snpnet and bigstatsr is different; snpnet relies on PLINK 2.0 to check KKT conditions in parallel, while bigstatsr parallelizes fitting of models from different folds and hyper-parameters.
 Because bigstatsr uses memory-mapping, the data is shared across processes and therefore it can fit these models in parallel without multiplying the memory needed.
 We allow for 16 cores to be used in these comparisons; bigstatsr effectively uses only 4 here (the number of folds).
 We allow for 128 GB of RAM for bigstatsr, but allow for 500 GB of RAM for snpnet because we had memory issues running it with only 128 GB.
 We use sex, age, and the first 16 principal components as unpenalized covariates when fitting the lasso models.
 
-[TODO: SHOWING PREDICTION FOR BOTH THE SAME FOLD AND CMSA + TIMING]
+Table \ref{tab:results} presents the results of this benchmark.
+Fitting lasso with bigstatsr is 35 times faster than with snpnet for high cholesterol, 29 times faster for asthma, and 4.5 faster for height.
+When using only one validation fold for choosing the best-performing $\lambda$ and no refitting, snpnet and bigstatsr provide the same predictive performance, validating the use of the approximation in bigstatsr.
+When using the whole training set, i.e.\ when refitting in snpnet and using CMSA in bigstatsr, predictive performance is much higher than when the validation set is not used for training. 
+For example, partial correlation for height is of 0.6116 with CMSA (i.e.\ using the average of 4 models) compared to 0.5856 when using only one of these models, showing how important it is to make the most of the training + validation sets.
 
 \begin{table}[h]
-	\caption{Benchmark of snpnet against bigstatsr in terms of predictive performance and computation time. Predictive performance is reported in terms of partial correlations between the polygenic scores and the phenotypes, residualized using the covariates. Timings are reported in minutes. Timings for snpnet report the training for 60\% of the data (using the training set only) + the refitting for 80\% of the data (using the training and validation sets). Timings for bigstatsr report the time taken by the CMSA procedure (fitting K=4 models here). \label{tab:results}}
+	\caption{Benchmark of snpnet against bigstatsr in terms of predictive performance and computation time. Predictive performance is reported in terms of partial correlations between the polygenic scores and the phenotypes, residualized using the covariates. Timings are reported in minutes. Timings for snpnet report the training for 60\% of the data (using the training set only) + the refitting for 80\% of the data (using both the training and validation sets). Timings for bigstatsr report the time taken by the CMSA procedure (fitting K=4 models here). Refitting snpnet for BMI was aborted after 12 hours. \label{tab:results}}
 	\vspace*{0.5em}
 	\centering
 	\begin{tabular}{|l|c|c|c|c|c|c|}
@@ -173,8 +178,10 @@ We use sex, age, and the first 16 principal components as unpenalized covariates
 		\hline
 		Trait & Perf. (1 fold) & Perf. (refit) & Time & Perf. (1 fold) & Perf. (CMSA) & Time \\
 		\hline
-		Asthma & 0.1354 & 0.1443 & 188 + 101 & 0.1353 & 0.1499 & 10 \\
-		High cholesterol & 0.1223 & 0.1325 & 101 + 146 & 0.1226 & 0.1347 & 7 \\
+		Asthma & 0.1349 & 0.1438 & 188 + 101 & 0.1348 & 0.1493 & 10 \\
+		High cholesterol & 0.1254 & 0.1366 & 101 + 146 & 0.1257 & 0.1387 & 7 \\
+		BMI & 0.3031 & NA & 161 + >720 & 0.3018 & 0.3324 & 65 \\
+		Height & 0.5871 & 0.6106 & 409 + 715 & 0.5856 & 0.6116 & 249 \\
 		\hline
 	\end{tabular}
 \end{table}
@@ -223,8 +230,8 @@ Recently, we have implemented a new parameter \texttt{power\_scale} to allow for
 
 \section*{Discussion}
 
-We have shown both theoretically and empirically that bigstatsr provides faster and possibly more accurate models than snpnet, and also made some recommendations on how to best use penalized regression for deriving polygenic scores based on very large individual-level genetic data.
-Note that, in \cite{qian2020fast}, no comparison is made with bigstatsr in terms of predictive performance. The only comparison reported focuses on computation time and show that bigstatsr is slower than snpnet on a small synthetic dataset.
+We have shown both theoretically and empirically that bigstatsr is faster than snpnet, and also made some recommendations on how to best use penalized regression for deriving polygenic scores based on very large individual-level genetic data.
+Note that, in \cite{qian2020fast}, the only comparison made between these two packages focuses on computation time and show that bigstatsr is slower than snpnet on a small synthetic dataset.
 
 \cite{qian2020fast} also wrote that bigstatsr ``do not provide as much functionality as needed in [their] real-data application'', mainly because bigstatsr requires converting the input data and cannot handle missing values.
 It is true that bigstatsr uses an intermediate format, which is a simple on-disk matrix format accessed via memory-mapping.
@@ -236,26 +243,25 @@ As for package snpnet, it uses the PLINK 2.0 `.pgen` format, which is still unde
 This format is not currently provided by the UK Biobank, and can therefore be considered as an intermediate format as well.
 
 \cite{qian2020fast} also points out the lack of flexibility of bigstatsr because it handles linear and logistic regression but not Cox regression, and can only use standardized variables.
-While it is true that Cox regression is not yet implemented in bigstatsr, it is one of the regression for which it is easy to derive strong rules \cite[]{tibshirani2012strong}.
+Although Cox regression is not yet implemented in bigstatsr, it is one of the regression for which it is easy to derive strong rules \cite[]{tibshirani2012strong}.
 As for scaling, we have seen how to effectively get unstandardized genotypes using different penalty factors in section Recommendations, and we actually recommend to use an in-between scaling, or to test different scaling values within our CMSA framework using the new parameter \texttt{power\_scale} in bigstatsr.
 Finally, when we developed R packages bigstatsr and bigsnpr for analyzing large scale genetic data, we separated functions in two packages because some functions are not specific to genetic data (the ones in bigstatsr).
 Therefore, when using our on-disk matrix format, one can store e.g.\ other omics data and also have access to a broad range of analysis tools provided by bigstatsr, e.g.\ ultra-fast penalized regressions, association studies and principal component analysis without any extra coding \cite[]{prive2018efficient}.
 
-To sum up, we have found the BASIL approach derived in \cite{qian2020fast} to be a clever approach to try to alleviate the I/O problem of other penalized regression implementations for very large datasets.
-Yet, we use a simpler and more pragmatic alternative in bigstatsr and show that this leads to faster fitting of penalized regressions in bigstatsr compared to snpnet.
+In summary, we have found the BASIL approach derived in \cite{qian2020fast} to be a clever approach that alleviates the I/O problem of other penalized regression implementations for very large datasets.
+BASIL makes significant and valuable contributions to the important problem of fitting penalized regression models efficiently. 
+However, we also find that the implementation of BASIL in snpnet is still an order of magnitude slower than our  package bigstatsr, which uses a simpler and more pragmatic approach \cite[]{prive2018efficient,prive2019efficient}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%\clearpage
+\clearpage
 %\vspace*{5em}
 
 \section*{Software and code availability}
 
-[TODO: EXPORT CODE FROM CLUSTER] 
-
-%All code used for this paper is available at \url{https://github.com/privefl/paper-ldpred2/tree/master/code}.
-%The newest version of R package bigsnpr can be installed from GitHub (see \url{https://github.com/privefl/bigsnpr}).
+All code used for this paper is available at \url{https://github.com/privefl/paper2-PRS/tree/master/response-snpnet/code}.
+The newest version of R packages bigstatsr and bigsnpr can be installed from GitHub.
 A tutorial on fitting penalized regressions with R package bigstatsr is available at \url{https://privefl.github.io/bigstatsr/articles/penalized-regressions.html}. 
 
 \section*{Acknowledgements}
@@ -273,7 +279,7 @@ The authors declare no competing interests.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%\clearpage
+\clearpage
 
 \bibliographystyle{natbib}
 \bibliography{refs}
