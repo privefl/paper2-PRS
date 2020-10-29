@@ -39,7 +39,7 @@ bigassertr::assert_dir("log")
 NCORES <- 16
 library(future.batchtools)
 plan(batchtools_slurm(resources = list(
-  t = "12:00:00", c = NCORES, mem = "500g",
+  t = "2-00:00", c = NCORES, mem = "500g",
   name = basename(rstudioapi::getSourceEditorContext()$path))))
 
 furrr::future_iwalk(pheno, ~ {

@@ -163,13 +163,14 @@ We allow for 128 GB of RAM for bigstatsr, but allow for 500 GB of RAM for snpnet
 We use sex, age, and the first 16 principal components as unpenalized covariates when fitting the lasso models.
 
 Table \ref{tab:results} presents the results of this benchmark.
-Fitting lasso with bigstatsr is 35 times faster than with snpnet for high cholesterol, 29 times faster for asthma, and 4.5 faster for height.
+Fitting lasso with bigstatsr is 35 times faster than with snpnet for high cholesterol, 29 times faster for asthma, 16 times faster for BMI, and 4.5 times faster for height.
 When using only one validation fold for choosing the best-performing $\lambda$ and no refitting, snpnet and bigstatsr provide the same predictive performance, validating the use of the approximation in bigstatsr.
 When using the whole training set, i.e.\ when refitting in snpnet and using CMSA in bigstatsr, predictive performance is much higher than when the validation set is not used for training. 
 For example, partial correlation for height is of 0.6116 with CMSA (i.e.\ using the average of 4 models) compared to 0.5856 when using only one of these models, showing how important it is to make the most of the training + validation sets.
+Also, CMSA can provide better predictive performance than the refitting strategy in snpnet, e.g.\ a partial correlation of 0.3324 vs 0.3221 for BMI.
 
 \begin{table}[h]
-	\caption{Benchmark of snpnet against bigstatsr in terms of predictive performance and computation time. Predictive performance is reported in terms of partial correlations between the polygenic scores and the phenotypes, residualized using the covariates. Timings are reported in minutes. Timings for snpnet report the training for 60\% of the data (using the training set only) + the refitting for 80\% of the data (using both the training and validation sets). Timings for bigstatsr report the time taken by the CMSA procedure (fitting K=4 models here). Refitting snpnet for BMI was aborted after 12 hours. \label{tab:results}}
+	\caption{Benchmark of snpnet against bigstatsr in terms of predictive performance and computation time. Predictive performance is reported in terms of partial correlations between the polygenic scores and the phenotypes, residualized using the covariates. Timings are reported in minutes. Timings for snpnet report the training for 60\% of the data (using the training set only) + the refitting for 80\% of the data (using both the training and validation sets). Timings for bigstatsr report the time taken by the CMSA procedure (fitting K=4 models here). \label{tab:results}}
 	\vspace*{0.5em}
 	\centering
 	\begin{tabular}{|l|c|c|c|c|c|c|}
@@ -180,7 +181,7 @@ For example, partial correlation for height is of 0.6116 with CMSA (i.e.\ using 
 		\hline
 		Asthma & 0.1349 & 0.1438 & 188 + 101 & 0.1348 & 0.1493 & 10 \\
 		High cholesterol & 0.1254 & 0.1366 & 101 + 146 & 0.1257 & 0.1387 & 7 \\
-		BMI & 0.3031 & NA & 161 + >720 & 0.3018 & 0.3324 & 65 \\
+		BMI & 0.3031 & 0.3231 & 161 + 893 & 0.3018 & 0.3324 & 65 \\
 		Height & 0.5871 & 0.6106 & 409 + 715 & 0.5856 & 0.6116 & 249 \\
 		\hline
 	\end{tabular}
