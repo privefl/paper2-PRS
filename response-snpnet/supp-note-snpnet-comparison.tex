@@ -73,13 +73,13 @@
 Penalized regression with L1 penalty, also known as ``lasso'', has been widely used since it proved to be an effective method for simultaneously performing variable selection and model fitting \cite[]{tibshirani1996regression}.
 R package glmnet is a popular software to fit the lasso efficiently \cite[]{friedman2010regularization}.
 However, glmnet cannot handle very large datasets such as biobank-scale data that are now available in human genetics, where both the sample size and the number of variables are very large.
-One strategy used to run penalized regressions on such large datasets such as the UK Biobank \cite[]{bycroft2018uk} has been to apply a variable pre-selection step before fitting the lasso \cite[]{lello2018accurate}.
+One strategy used to run penalized regressions on large datasets such as the UK Biobank \cite[]{bycroft2018uk} has been to apply a variable pre-selection step before fitting the lasso \cite[]{lello2018accurate}.
 Recently, authors of the glmnet package have developed a new R package, snpnet, to fit penalized regressions on the UK Biobank without having to perform any pre-filtering \cite[]{qian2020fast}.
 Earlier, we developed two R packages for efficiently analyzing large-scale (genetic) data, namely bigstatsr and bigsnpr \cite[]{prive2018efficient}.
 We then specifically derived a highly efficient implementation of penalized linear and logistic regressions in R package bigstatsr, and showed how these functions were useful for genetic prediction with some applications to the UK Biobank \cite[]{prive2019efficient}.
 Here we benchmark bigstatsr against snpnet for fitting penalized regressions on large genetic data.
 Through some theoretical expectations and empirical comparisons, we show that package bigstatsr is generally much faster than snpnet.
-We also make more recommendations on how to fit penalized regressions in the context of genetic data.
+We also take that opportunity to provide more recommendations on how to fit penalized regressions in the context of genetic data.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -105,11 +105,11 @@ Hence, for very large datasets, the BASIL procedure enables to fit the exact las
 
 \subsection*{A more pragmatic approach in bigstatsr}
 
-Since our package bigstatsr is not using this BASIL procedure, one might think that fitting penalized regression with R package bigstatsr should be slow for very large datasets.
-We do check the KKT conditions for variables in the ever-active set, i.e.\ for a (small) subset of all variables only; this first checking is therefore fast. However, KKT conditions almost always hold when $p > n$ \cite[]{tibshirani2012strong}, which is particularly the case for the remaining variables in the second phase of checking. 
+In our R package bigstatsr, we proposed a different strategy.
+We also check the KKT conditions for variables in the ever-active set, i.e.\ for a (small) subset of all variables only; this first checking is therefore fast. However, KKT conditions almost always hold when $p > n$ \cite[]{tibshirani2012strong}, which is particularly the case for the remaining variables in the second phase of checking. 
 Because of this, we decided in \cite{prive2019efficient} to skip this second checking when designing functions \texttt{big\_spLinReg} and \texttt{big\_spLogReg} for fitting penalized regression on very large datasets in R package bigstatsr.
 Thanks to this approximation, these two functions effectively access all variables only once at the very beginning to compute the statistics used by the strong rules, and then access a subset of variables only (the ever-active set).
-As we show later, this means that fitting penalized regressions using the approximation we proposed in \cite{prive2019efficient} is computationally more efficient than using the BASIL procedure proposed by \cite{qian2020fast}, and yet provides as accurate predictors.
+As we show later, this means that fitting penalized regressions using the approximation we proposed in \cite{prive2019efficient} is computationally more efficient than using the BASIL procedure proposed by \cite{qian2020fast}, and yet provides equally accurate predictors.
 Moreover, as bigstatsr uses memory-mapping, data that resides on disk is accessed only once from disk to memory and then stays in memory while there is no need to free memory.
 Only when the ever-active set becomes very large, e.g.\ for very polygenic traits, memory can become an issue, but this extreme case would become a problem for package snpnet as well.
 Please refer to the Discussion section of \cite{prive2019efficient} for more details on these matters.
@@ -146,7 +146,7 @@ Fitting lasso is 35 times faster using bigstatsr than using snpnet for high chol
 When using only one validation fold for choosing the best-performing $\lambda$ and no refitting, snpnet and bigstatsr provide the same predictive performance, validating the use of the approximation in bigstatsr.
 When using the whole training set, i.e.\ when refitting in snpnet and using CMSA in bigstatsr, predictive performance is much higher than when the validation set is not used for training. 
 For example, partial correlation for height is of 0.6116 with CMSA (i.e.\ using the average of 4 models) compared to 0.5856 when using only one of these models, showing how important it is to make the most of the training + validation sets.
-Also, CMSA can provide slightly higher predictive performance than the refitting strategy in snpnet, e.g.\ a partial correlation of 0.3324 vs 0.3221 for BMI.
+Also, CMSA can provide slightly higher predictive performance than the refitting strategy in snpnet, with e.g.\ a partial correlation of 0.3324 vs 0.3221 for BMI.
 
 \begin{table}[h]
 	\caption{Benchmark of snpnet against bigstatsr in terms of predictive performance and computation time. Predictive performance is reported in terms of partial correlations between the polygenic scores and the phenotypes, residualized using the covariates. Timings are reported in minutes. Timings for snpnet report the training for 60\% of the data (using the training set only) + the refitting for 80\% of the data (using both the training and validation sets). Timings for bigstatsr report the time taken by the CMSA procedure (fitting K=4 models here). \label{tab:results}}
@@ -201,7 +201,7 @@ In the case of L1 regularization, using a different scaling can be obtained by u
 For example, using $\lambda_j=1/\text{SD}_j$ allows to effectively use unscaled genotypes.
 Recently, we have implemented a new parameter \texttt{power\_scale} to allow for different scalings when fitting the lasso in bigstatsr. Note that a vector of values to try can be provided, and the best-performing scaling is automatically chosen within the CMSA procedure.
 
-Fourth, \cite{qian2020fast} write that bigstatsr ``do not provide as much functionality as needed in [their] real-data application'', mainly because bigstatsr requires converting the input data and cannot handle missing values.
+Fourth, \cite{qian2020fast} stated that bigstatsr ``do not provide as much functionality as needed in [their] real-data application'', mainly because bigstatsr requires converting the input data and cannot handle missing values.
 It is true that bigstatsr uses an intermediate format, which is a simple on-disk matrix format accessed via memory-mapping.
 However, package bigsnpr provides fast parallel functions \texttt{snp\_readBed2} for converting from `.bed' files and \texttt{snp\_readBGEN} for converting from imputed `.bgen' files, the two formats used by the UK Biobank.
 For example, it took 6 minutes only to read from the UK biobank `.bed' file used in this paper. We then used function \texttt{snp\_fastImputeSimple} to impute by the variant means in 5 minutes only, which is also the imputation strategy used in snpnet.
