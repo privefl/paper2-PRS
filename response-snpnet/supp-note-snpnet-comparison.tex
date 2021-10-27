@@ -70,6 +70,17 @@
 \maketitle
 
 
+
+\renewcommand{\thefigure}{SS\arabic{figure}}
+\setcounter{figure}{0}
+\renewcommand{\thetable}{SS\arabic{table}}
+\setcounter{table}{0}
+\renewcommand{\theequation}{SS\arabic{equation}}
+\setcounter{equation}{0}
+\renewcommand{\thesection}{SS\arabic{section}}
+\setcounter{section}{1}
+
+
 Penalized regression with L1 penalty, also known as ``lasso'', has been widely used since it proved to be an effective method for simultaneously performing variable selection and model fitting \cite[]{tibshirani1996regression}.
 R package glmnet is a popular software to fit the lasso efficiently \cite[]{friedman2010regularization}.
 However, glmnet cannot handle very large datasets such as biobank-scale data that are now available in human genetics, where both the sample size and the number of variables are very large.
